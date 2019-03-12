@@ -1,0 +1,45 @@
+#!/bin/bash
+
+cmd=$(basename $0)
+
+Host=icinga.cfn.upenn.edu
+
+sendPassiveCheckCmd="$(dirname $0)/sendPassiveCheck"
+
+syntax="$cmd {-s service} [-h host][-H] {check_command} [-n] [-v]"
+
+while getopts "s:Hh:nv" arg
+do
+	case "$arg" in 
+		s|H|h|N|v)
+			eval "opt_${arg}='${OPTARG:=1}'"
+			;;
+	esac
+done
+
+shift $(($OPTIND - 1))
+
+
+function sys {
+	[ -n "${opt_n}$opt_v}" ] && echo "$@" 1>&2
+	[ -n "$opt_n" ] || "$@"
+}
+
+Service=$opt_s
+
+if [ -n "$opt_H" ]
+then
+	$sendPassiveCheckCmd -t "$Host" -l "$Res" -H 
+else
+	Message=$(sys "$@")
+	Res=$?
+
+        if [ -n "${opt_n}${opt_v}" ]
+        then
+          echo "$Message" 1>&2
+        fi
+
+	$sendPassiveCheckCmd -t "$Host" -l "$Res" -s "$Service" "$Message"
+fi
+
+
