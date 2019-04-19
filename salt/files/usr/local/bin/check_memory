@@ -1,0 +1,48 @@
+#!/bin/bash
+
+cmd=$(basename $0)
+syntax="$cmd [-w WarningThreshold] [-c CriticalThreshold] [-v]"
+
+opt_w=1000
+opt_c=500
+
+while getopts "c:w:v" arg
+do
+	case "$arg" in 
+		c|w|v)
+			eval "opt_${arg}='${OPTARG:=1}'"
+			;;
+	esac
+done
+
+shift $(($OPTIND - 1))
+
+function sys {
+	[ -n "${opt_n}${opt_v}" ] && echo "$@" 1>&2
+	[ -n "$opt_n" ] || "$@"
+}
+
+function getFreeMemory () {
+	free -m | awk 'FNR == 3 {print $4}' 
+}
+
+FreeMemory=$(getFreeMemory)
+
+if [ "$FreeMemory" -lt "$opt_c" ]
+then
+	Message="CRITICAL - Free memory = $FreeMemory"
+	ReturnCode=2
+elif [ "$FreeMemory" -lt "$opt_w" ]
+then
+
+	Message="Warning - Free memory = $FreeMemory"
+	ReturnCode=1
+else
+
+	Message="OK - Free memory = $FreeMemory"
+	ReturnCode=0
+fi
+
+echo "$Message"
+exit "$ReturnCode"
+

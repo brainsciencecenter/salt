@@ -1,0 +1,68 @@
+#!/bin/bash
+
+cmd=$(basename $0)
+
+ToHost=icinga.cfn.upenn.edu
+
+if [ -e /etc/salt/minion_id ]
+then
+	opt_f=$(< /etc/salt/minion_id)
+else
+	opt_f=$(hostname -f)
+fi
+
+Res=0
+OverrideDir=/etc/nagios/override.d
+
+sendPassiveCheckCmd="$(dirname $0)/sendPassiveCheck"
+
+syntax="$cmd {-s service} [-h host][-H] {check_command} [-n] [-v]"
+
+while getopts "f:Hh:ns:v" arg
+do
+	case "$arg" in 
+		f|H|h|N|s|v)
+			eval "opt_${arg}='${OPTARG:=1}'"
+			;;
+	esac
+done
+
+shift $(($OPTIND - 1))
+
+
+function sys {
+	[ -n "${opt_n}${opt_v}" ] && echo "$@" 1>&2
+	[ -n "$opt_n" ] || "$@"
+}
+
+Service=$opt_s
+
+if [ -n "$opt_H" ]
+then
+	$sendPassiveCheckCmd -f  "$opt_f" -t "$ToHost" -l "$Res" -H 
+else
+	if [ -e "$OverrideDir/$Service" ]
+	then
+		Message=$(cat "$OverrideDir/$Service")
+		if echo "$Message" | grep -qi "^OK:" 
+		then
+			Res=0
+		elif echo "$Message" | grep -qi "^WARNING:" 
+		then
+			Res=1
+		elif echo "$Message" | grep -qi "^CRITICAL:"
+		then
+			Res=2
+		fi
+	else
+		Message=$(sys "$@")
+		Res=$?
+	fi
+
+        if [ -n "${opt_n}${opt_v}" ]
+        then
+          echo "$Message" 1>&2
+        fi
+
+	sys $sendPassiveCheckCmd -f "$opt_f" -t "$ToHost" -l "$Res" -s "$Service" "$Message"
+fi

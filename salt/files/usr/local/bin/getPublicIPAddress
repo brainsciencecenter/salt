@@ -1,0 +1,2 @@
+#!/bin/bash
+curl -s https://www.whatismypublicip.com/ | grep up_finished | sed 's,[        ]*</div>,,; s/^.*>//' | grep -P '\d' | sed 's/[ 	]//g'
