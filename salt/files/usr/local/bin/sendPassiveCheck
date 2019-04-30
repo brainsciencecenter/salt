@@ -15,9 +15,9 @@ function sys {
 function sendPassiveCheck {
 	if [ -n "$opt_H" ]
 	then
-		sys echo "[$(date +%s)] PROCESS_HOST_CHECK_RESULT;${opt_f};${opt_l};$@" | ssh -T "$opt_t"
+		sys echo "[$(date +%s)] PROCESS_HOST_CHECK_RESULT;${opt_f};${opt_l};$@" | ssh -x -T "$opt_t"
 	else
-		sys echo "[$(date +%s)] PROCESS_SERVICE_CHECK_RESULT;${opt_f};${opt_s};${opt_l};$@" | ssh -T "$opt_t"
+		sys echo "[$(date +%s)] PROCESS_SERVICE_CHECK_RESULT;${opt_f};${opt_s};${opt_l};$@" | ssh -x -T "$opt_t"
 	fi
 }
 
