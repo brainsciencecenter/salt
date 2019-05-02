@@ -3,10 +3,8 @@ icinga:
     procs:
       check_procs:
         name: [sshd]
-        warning: '1:5'
-        critical: '1:10'
-  
-    check_apt:
+        warning: '1:500'
+        critical: '1:700'
   
     /: 
       check_disk:
@@ -31,7 +29,9 @@ icinga:
         warning: 40\%
   
     load:
-      check_load
+      check_load:
+        warning: 20
+        critical: 50
   
     check_sensors:
 
@@ -40,6 +40,6 @@ icinga:
         minute: 2
 
     check_users:
-      warning: 10
-      critical: 20
+      warning: 200
+      critical: 300
 
