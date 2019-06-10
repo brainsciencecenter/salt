@@ -39,7 +39,7 @@ Service=$opt_s
 
 if [ -n "$opt_H" ]
 then
-	$sendPassiveCheckCmd -f  "$opt_f" -t "$ToHost" -l "$Res" -H 
+	sys $sendPassiveCheckCmd -f  "$opt_f" -t "$ToHost" -l "$Res" -H 
 else
 	if [ -e "$OverrideDir/$Service" ]
 	then

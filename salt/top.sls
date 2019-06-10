@@ -7,5 +7,8 @@ base:
     - icinga
     - wireguard
 
+  brb.cfn.upenn.edu:
+    - icinga
+
   compute.chead.uphs.upenn.edu:
     - compute

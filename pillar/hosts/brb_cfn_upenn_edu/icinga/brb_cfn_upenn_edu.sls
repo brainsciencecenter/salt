@@ -1,15 +1,12 @@
-{% if nodes is not defined %}
-{%   set nodes = [ salt['grains.get']('id') ] %}
-{% endif %}
-
 icinga:
-{% for id in nodes %}
-  {{ id }}:
+  brb.cfn.upenn.edu:
     procs:
       check_procs:
         name: [sshd]
         warning: '1:5'
         critical: '1:10'
+  
+    check_apt:
   
     /: 
       check_disk:
@@ -17,35 +14,31 @@ icinga:
         critical: 10\%
         warning: 20\%
   
-    /var:
+    /boot:
       check_disk:
         minute: '*/10'
-
-    /tmp:
-      check_disk:
-        minute: '*/10'
-
-    /state/partition1:
-      check_disk:
-        minute: '*/10'
-
-    load:
-      check_load:
-        warning: 15
-        critical: 20
+        critical: 20\%
+        warning: 40\%
   
+    /home:
+      check_disk:
+        minute: '*/10'
+  
+    load:
+      check_load
+  
+    check_sensors:
+
     time:
       check_ntp:
-        minute: '*/10'
+        minute: 2
 
-    memory:
-      check_memory:
-        minute: '*/5'
+    Public IP Address:
+      getPublicIPAddress:
         command_path: /usr/local/bin
-        critical: 5000
-        warning: 10000
+        minute: '*/5'
 
     check_users:
       warning: 10
       critical: 20
-{% endfor %}
+
