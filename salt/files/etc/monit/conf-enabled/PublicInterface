@@ -1,0 +1,2 @@
+check network public with interface {{ salt['pillar.get']('PublicInterface') }}
+    if failed link then exec /usr/local/bin/resetPublicInterface

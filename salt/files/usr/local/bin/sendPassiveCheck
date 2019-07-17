@@ -16,14 +16,23 @@ function sys {
 }
 
 function sendPassiveCheck {
+	local	res
+
 	if [ -n "$opt_H" ]
 	then
 		sys echo "[$(date +%s)] PROCESS_HOST_CHECK_RESULT;${opt_f};${opt_l};$@" | ssh -T "$opt_t"
+		res="$?"
+		logger -t "${cmd}" -- "$cmd $Args : ReturnCode = '$res'"
 	else
 		sys echo "[$(date +%s)] PROCESS_SERVICE_CHECK_RESULT;${opt_f};${opt_s};${opt_l};$@" | ssh -T "$opt_t"
+		res="$?"
+		logger -t "${cmd}" -- "$cmd $Args : ReturnCode = '$res'"
 	fi
+
+	return "$res"
 }
 
+Args="$*"
 
 while getopts f:Hhl:m:ns:t:w:v arg
 	do
@@ -78,14 +87,14 @@ while [ "$ReturnCode" != 0 ]
 do
 	if [ "$Tries" -ge "$MaxTries" ]
 	then
-		logger -t "${cmd}" -- "Tried more than '$MaxTries' giving up. SendPassiveCheck $@"
+		logger -t "${cmd}" -- "Tried more than '$MaxTries' giving up. $cmd $Args"
 		break
 	else
 		Tries=$((Tries + 1))
 	fi
 
 	p=$(($RANDOM % $Window))
-	logger -t "${cmd}" -- "sendPassiveCheck $@ : ReturnCode = '$ReturnCode' failed with '$res'.  Pausing for $p seconds"
+	logger -t "${cmd}" -- "$cmd $Args : ReturnCode = '$ReturnCode' failed with '$res'.  Pausing for $p seconds on try '$Tries'"
 
 	sleep "${p}s"
 
@@ -100,4 +109,5 @@ then
 else
 	logger -t "${cmd}:${opt_s}" -- "$@"
 fi
+
 

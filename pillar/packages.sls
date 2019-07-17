@@ -6,6 +6,7 @@ packages:
     - monitoring-plugins-basic
     - monitoring-plugins-common
     - nagios-plugins-contrib
+    - lm-sensors
 {% elif grains['os_family'] == 'Debian' %}
     - nagios-plugins-common
     - nagios-plugins-basic
