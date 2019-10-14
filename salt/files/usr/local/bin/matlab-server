@@ -1,0 +1,107 @@
+#!/bin/bash
+## BEGIN INIT INFO
+# Provides: matlab
+# Default-Start: 3 4 5
+# Default-Stop: 0 1 2 3 4 6
+# Required-Start:
+#              
+## END INIT INFO
+# matlab:        Start matlab license server
+#
+# chkconfig: 345 1 99
+#
+# description: Start matlab license server
+#
+
+base=${0##*/}
+
+MatlabDir=/usr/local/MATLAB/R2019a
+User=matlab
+Shell=/bin/bash
+
+
+# Log that something succeeded
+success() {
+	[ "$BOOTUP" != "verbose" -a -z "${LSB:-}" ] && echo_success
+	return 0
+}
+
+# Log that something failed
+failure() {
+	local rc=$?
+	[ "$BOOTUP" != "verbose" -a -z "${LSB:-}" ] && echo_failure
+	[ -x /bin/plymouth ] && /bin/plymouth --details
+	
+	return $rc
+}
+
+echo_success() {
+	[ "$BOOTUP" = "color" ] && $MOVE_TO_COL
+	echo -n "["
+	[ "$BOOTUP" = "color" ] && $SETCOLOR_SUCCESS
+	echo -n $"  OK  "
+	[ "$BOOTUP" = "color" ] && $SETCOLOR_NORMAL
+	echo -n "]"
+	echo -ne "\r"
+	return 0
+}
+
+echo_failure() {
+	[ "$BOOTUP" = "color" ] && $MOVE_TO_COL
+	echo -n "["
+	[ "$BOOTUP" = "color" ] && $SETCOLOR_FAILURE
+	echo -n $"FAILED"
+	[ "$BOOTUP" = "color" ] && $SETCOLOR_NORMAL
+	echo -n "]"
+	echo -ne "\r"
+	return 1
+}
+
+
+
+suas() {
+	su "$User" -s "$Shell" -c "$@"
+}
+ 
+start() {
+	/usr/local/bin/fix-eth1-mac-address
+	echo -n "Starting matlab flexlm"
+
+	suas ${MatlabDir}/etc/lmboot
+}
+
+stop() {
+	echo -n "Stopping matlab flexlm"
+
+	suas ${MatlabDir}/etc/lmdown
+}
+
+status() {
+
+	suas ${MatlabDir}/etc/lmstat
+}
+
+case "$1" in
+    restart)
+	start && success || failure
+	;;
+
+    start)
+	start && success || failure
+	echo
+	;;
+
+    stop)
+	stop && success || failure
+	echo
+	;;
+
+    status)
+	status
+	;;
+
+    *)
+	echo $"Usage: $0 {start|stop|status|restart}"
+	exit 3
+	;;
+esac

@@ -9,8 +9,8 @@ base:
   'bfb.cfn.upenn.edu':
     - hosts.bfb_cfn_upenn_edu
 
-  'brb.cfn.upenn.edu':
-    - hosts.brb_cfn_upenn_edu
+  'picsl-huron.pmacs.upenn.edu':
+    - hosts.picsl-huron_pmacs_upenn_edu
 
   'clippy.cfn.upenn.edu':
     - hosts.clippy_cfn_upenn_edu

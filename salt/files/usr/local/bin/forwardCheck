@@ -41,7 +41,7 @@ if [ -n "$opt_H" ]
 then
 	sys $sendPassiveCheckCmd -f  "$opt_f" -t "$ToHost" -l "$Res" -H 
 else
-	if [ -e "$OverrideDir/$Service" ]
+	if [ -n "$Service" -a -e "$OverrideDir/$Service" ]
 	then
 		Message=$(cat "$OverrideDir/$Service")
 		if echo "$Message" | grep -qi "^OK:" 

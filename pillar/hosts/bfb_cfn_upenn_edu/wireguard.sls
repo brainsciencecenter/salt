@@ -30,14 +30,13 @@ wireguard:
 
         - PublicKey: sSCzoADeo0efp6olOX5pQ20pXoMjdcHsqGBZ98+MyAw=
           # AllowedIPs must be a list of strings or a comma separated string
-          Endpoint: 158.130.178.15:51820
+          Endpoint: 10.102.163.239:51820
           AllowedIPs:
             - 10.251.1.102/32
 
         - PublicKey: LPdJaiDhI9GBbt2bhaMz/rQ8XUt0wL1VAzR/uuy4Wnk=
           # AllowedIPs must be a list of strings or a comma separated string
-          Endpoint: 35.190.189.54:51820
+          Endpoint: 35.207.8.196:51820
           AllowedIPs:
             - 10.251.1.103/32
-
 

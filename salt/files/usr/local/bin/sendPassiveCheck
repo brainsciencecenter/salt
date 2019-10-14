@@ -6,6 +6,7 @@ $cmd : [-f from-host] -H {-t to-host} [-h] {-l {0|1|2}} -n -v [message]"
 
 Window=30
 MaxTries=10
+Timeout=5
 
 opt_f=$(hostname)
 opt_l=0
@@ -20,11 +21,11 @@ function sendPassiveCheck {
 
 	if [ -n "$opt_H" ]
 	then
-		sys echo "[$(date +%s)] PROCESS_HOST_CHECK_RESULT;${opt_f};${opt_l};$@" | ssh -T "$opt_t"
+		sys echo "[$(date +%s)] PROCESS_HOST_CHECK_RESULT;${opt_f};${opt_l};$@" | timeout "$Timeout" ssh -T "$opt_t"
 		res="$?"
 		logger -t "${cmd}" -- "$cmd $Args : ReturnCode = '$res'"
 	else
-		sys echo "[$(date +%s)] PROCESS_SERVICE_CHECK_RESULT;${opt_f};${opt_s};${opt_l};$@" | ssh -T "$opt_t"
+		sys echo "[$(date +%s)] PROCESS_SERVICE_CHECK_RESULT;${opt_f};${opt_s};${opt_l};$@" | timeout "$Timeout" ssh -T "$opt_t"
 		res="$?"
 		logger -t "${cmd}" -- "$cmd $Args : ReturnCode = '$res'"
 	fi

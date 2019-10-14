@@ -1,0 +1,5 @@
+#!/bin/bash
+
+logger "Fixing eth1 mac address"
+
+ip link set dev eth1 address 00:21:28:3D:6D:02
