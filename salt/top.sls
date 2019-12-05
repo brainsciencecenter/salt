@@ -7,7 +7,10 @@ base:
     - icinga
     - wireguard
 
-  brb.cfn.upenn.edu:
+  detre-group.pennbrain.upenn.edu:
+    - hosts/detre-group
+
+  picsl-huron.pmacs.upenn.edu:
     - icinga
 
   compute.chead.uphs.upenn.edu:

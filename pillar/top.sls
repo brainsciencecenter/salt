@@ -1,5 +1,6 @@
 base:
   '*':
+    - defaults
     - packages
     - icinga-files
 

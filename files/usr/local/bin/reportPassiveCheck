@@ -1,3 +1,0 @@
-#!/bin/bash
-
-cat >> /var/run/icinga2/cmd/icinga2.cmd

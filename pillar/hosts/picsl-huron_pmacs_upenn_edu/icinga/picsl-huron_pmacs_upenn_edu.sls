@@ -1,5 +1,5 @@
 icinga:
-  brb.cfn.upenn.edu:
+  picsl-huron.pmacs.upenn.edu:
     procs:
       check_procs:
         name: [sshd]
