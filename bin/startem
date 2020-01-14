@@ -1,0 +1,36 @@
+#!/bin/bash
+
+Group=holder
+Salt=dd34a9
+GroupName=${Group}-${Salt}
+InstanceName=${GroupName}-demo
+BootDiskSize=10G
+Zone=us-east1-b
+ServiceAccount=slurm-gcp@holder-dd34a9.iam.gserviceaccount.com
+Network=https://www.googleapis.com/compute/v1/projects/pennbrain-host-3097383fff/global/networks/bsc-host-network
+SubNet=https://www.googleapis.com/compute/v1/projects/pennbrain-host-3097383fff/regions/us-east1/subnetworks/${Group}-subnet
+ImageSource=ubuntu-1910-eoan-v20200107
+BootDiskSource=https://compute.googleapis.com/compute/v1/projects/pennbrain-center/global/images/ubuntu-1910-eoan-v20200107
+ExternalIP=35.231.194.165
+HostName=holder.pennbrain.upenn.edu
+
+gcloud --verbosity=none -q beta compute instances create $InstanceName		\
+	--project=holder-dd34a9 						\
+	--zone=$Zone								\
+	--machine-type=$MachineType						\
+	--subnet=$SubNet							\
+	--network-tier=PREMIUM							\
+	--address=$ExternalIP							\
+	--hostname=$HostName							\
+	--tags=holder								\
+        --metadata="enable-oslogin=TRUE"					\
+	--metadata-from-file=minion-pem=minion-holder.pennbrain.upenn.edu.pem,minion-pub=minion-holder.pennbrain.upenn.edu.pub,startup-script=slurm-startup-script.sh		\
+	--service-account=$ServiceAccount					\
+	--maintenance-policy=MIGRATE						\
+	--scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append		\
+	--image=ubuntu-1910-eoan-v20200107					\
+	--image-project=ubuntu-os-cloud						\
+	--boot-disk-size=$BootDiskSize						\
+	--boot-disk-type=pd-standard						\
+	--boot-disk-device-name=$InstanceName					\
+	--reservation-affinity=any
