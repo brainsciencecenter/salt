@@ -1,17 +1,6 @@
 python3:
   pkg.installed
 
-itk:
-  pip.installed
-
-itksnap-repo:
-  git.latest:
-    - name: https://git.code.sf.net/p/itk-snap/src
-    - target: /share/apps/src/itksnap
-    - user: root
-    - branch: master
-    - submodules: True
-
 cmake:
   pkg.installed
 
@@ -22,16 +11,16 @@ vtk-ubuntu:
        - vtk7:
        - lvtk-dev
 
-qt-devel:
-  pkg.installed
+#qt-devel:
+#  pkg.installed
 
-fltk-devel:
-  pkg.installed
+#fltk-devel:
+#  pkg.installed
 
 
 ashs-repo:
-  git.latest:
-    - name: https://github.com/pyushkevich/ashs.git
-    - target: /share/apps/src/ashs
+  git.cloned:
+    - name: https://github.com/pyushkevich/ashs
+    - target: /share/apps/ashs/ashs-fastashs_2.0.0_07202018
     - user: root
-    - branch: master
+    - branch: fastashs
