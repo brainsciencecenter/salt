@@ -17,18 +17,27 @@
 import datetime
 import http.client
 import os
-import re
-import sys
 import shlex
 import socket
 import subprocess
+import sys
 import time
 import urllib.request, urllib.parse, urllib.error
+import yaml
+
+def getMetadata(key):
+    METADATA_URL = "http://metadata.google.internal/computeMetadata/v1/instance"
+
+    req = urllib.request.Request("{}/{}".format(METADATA_URL, key))
+    print("Trying URL '%s'" % (key), file=sys.stderr)
+    req.add_header('Metadata-Flavor', 'Google')
+    resp = urllib.request.urlopen(req)
+    return(resp.read().decode("utf-8"))
+
+ClusterConfig = yaml.load(getMetadata('attributes/cluster-config'),Loader=yaml.FullLoader)
 
 CLUSTER_NAME      = 'holder-cluster'
 MACHINE_TYPE      = 'n1-standard-2' # e.g. n1-standard-1, n1-starndard-2
-INSTANCE_TYPE     = 'compute' # e.g. controller, login, compute
-INSTANCE_TYPE     = 'Undefined'
 
 PROJECT           = 'holder-dd34a9'
 ZONE              = 'us-east1-b'
@@ -55,7 +64,19 @@ PREEMPTIBLE       = False
 SUSPEND_TIME      = 300
 
 DEF_PART_NAME   = "debug"
-CONTROL_MACHINE = CLUSTER_NAME + "-controller"
+CONTROL_MACHINE = CLUSTER_NAME + '-controller'
+
+tags = yaml.load(getMetadata('tags'),Loader=yaml.FullLoader)
+if 'controller' in tags:
+    INSTANCE_TYPE = 'controller'
+elif 'compute' in tags:
+    INSTANCE_TYPE = 'compute'
+elif 'login' in tags:
+    INSTANCE_TYPE = 'login'
+else:
+    INSTANCE_TYPE = 'Unknown'    
+
+print("INSTANCE_TYPE", INSTANCE_TYPE)
 
 MOTD_HEADER = '''
 
@@ -193,15 +214,12 @@ def install_packages():
         'environment-modules',
         'git',
         'hwloc',
-        #'libhwloc-dev',
         'lua5.3',
         'liblua5.3-dev',
         'man2html',
         'mariadb-client',
         'libmariadb-dev',
-        'mariadb-server',
         'munge',
-        'nfs-kernel-server',
         'libmunge-dev',
         'libmunge2',
         'libncurses-dev',
@@ -211,6 +229,8 @@ def install_packages():
         'libssl-dev',
         'libpam0g-dev',
         'libextutils-makemaker-cpanfile-perl',
+        'mariadb-server',
+        'nfs-kernel-server',
         'python',
         'python-pip',
         'python3-pip',
@@ -234,14 +254,10 @@ def install_packages():
         print("failed to install google python api client. Trying again 5 seconds.")
         time.sleep(5)
 
-    while subprocess.call(['pip', 'install', '--upgrade',
-        'cachetools==3.1.1', 'google-api-python-client']):
-        print("failed to install google python api client. Trying again 5 seconds.")
-        time.sleep(5)
-
+    # *** Need to fix for ubuntu
     if GPU_COUNT and (INSTANCE_TYPE == "compute"):
         rpm = "cuda-repo-rhel7-10.0.130-1.x86_64.rpm"
-        subprocess.call("yum -y install kernel-devel-$(uname -r) kernel-headers-$(uname -r)", shell=True)
+        subprocess.call("apt -y install kernel-devel-$(uname -r) kernel-headers-$(uname -r)", shell=True)
         subprocess.call(shlex.split("wget http://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/" + rpm))
         subprocess.call(shlex.split("rpm -i " + rpm))
         subprocess.call(shlex.split("yum clean all"))
@@ -369,7 +385,7 @@ def expand_machine_type():
             gb = type_resp['memoryMb'] / 1024;
             machine['memory'] = type_resp['memoryMb'] - (400 + (gb * 30))
 
-    except Exception as e:
+    except Exception as  e:
         print("Failed to get MachineType '%s' from google api (%s)" % (MACHINE_TYPE, str(e)))
 
     return machine
@@ -424,6 +440,7 @@ MpiDefault=none
 #PlugStackConfig=
 #PrivateData=jobs
 LaunchParameters=send_gids
+PrologFlags=x11
 
 # Always show cloud nodes. Otherwise cloud nodes are hidden until they are
 # resumed. Having them shown can be useful in detecting downed nodes.
@@ -595,7 +612,8 @@ NodeName={1}-compute{0}
     if cloud_range:
         conf += "NodeName={0}-compute{1} State=CLOUD".format(CLUSTER_NAME, cloud_range)
 
-    conf += "NodeName={0}-compute-image".format(CLUSTER_NAME)
+    conf += "\nNodeName={0}-compute-image\n".format(CLUSTER_NAME)
+
     conf += """
 PartitionName={} Nodes={}-compute[1-{}] Default=YES MaxTime=INFINITE State=UP LLN=yes
 """.format(DEF_PART_NAME, CLUSTER_NAME, MAX_NODE_COUNT)
@@ -687,7 +705,7 @@ ConstrainDevices=yes
 
 def install_meta_files():
 
-    scripts_path = APPS_DIR + '/slurm/scripts'
+    scripts_path = APPS_DIR + "/slurm/scripts"
     if not os.path.exists(scripts_path):
         os.makedirs(scripts_path)
 
@@ -704,17 +722,16 @@ def install_meta_files():
     ]
 
     for meta in meta_files:
-        file_name = meta['file']
-        meta_name = meta['meta']
-
+        file_name = meta["file"]
+        meta_name = meta["meta"]
 
         req = urllib.request.Request("{}/{}".format(GOOGLE_URL, meta_name))
-        print("Trying URL '%s'" % (meta_name), file=sys.stderr)
+        print("Trying URL '%s', file = '%s'" % (meta_name, file_name), file=sys.stderr)
         req.add_header('Metadata-Flavor', 'Google')
         resp = urllib.request.urlopen(req)
 
         f = open("{}/{}".format(scripts_path, file_name), 'w')
-        f.write(resp.read().decode("utf-8"))
+        f.write(resp.read().decode('utf-8'))
         f.close()
         os.chmod("{}/{}".format(scripts_path, file_name), 0o755)
 
@@ -724,7 +741,6 @@ def install_meta_files():
 #END install_meta_files()
 
 def install_slurm():
-    print("Installing Slurm")
 
     SLURM_PREFIX = "";
 
@@ -749,20 +765,19 @@ def install_slurm():
 
         cmd = "tar -xvjf " + file
         use_version = subprocess.check_output(
-            shlex.split(cmd)).splitlines()[0][:-1].decode("utf-8")
-        print("tar '%s'" % (use_version))
+            shlex.split(cmd)).decode('utf-8').splitlines()[0][:-1]
 
     os.chdir(use_version)
-    SLURM_PREFIX  = APPS_DIR + "/slurm/" + str(use_version)
+    SLURM_PREFIX  = APPS_DIR + '/slurm/' + use_version
 
     if not os.path.exists('build'):
         os.makedirs('build')
     os.chdir('build')
     subprocess.call(['../configure', '--prefix=%s' % SLURM_PREFIX,
-                     '--sysconfdir=%s/etc' % CURR_SLURM_DIR])
+                     '--sysconfdir=%s/etc' % CURR_SLURM_DIR], '--enable-x11')
     subprocess.call(['make', '-j', 'install'])
 
-    subprocess.call(shlex.split("ln -s %s %s" % (str(SLURM_PREFIX), str(CURR_SLURM_DIR))))
+    subprocess.call(shlex.split("ln -s %s %s" % (SLURM_PREFIX, CURR_SLURM_DIR)))
 
     os.chdir(prev_path)
 
@@ -969,28 +984,10 @@ def mount_nfs_vols():
 # Tune the NFS server to support many mounts
 def setup_nfs_threads():
 
-    f = open('/etc/default/nfs-kernel-server', 'w')
+    f = open('/etc/default/nfs-default-server', 'a')
     f.write("""
-# Number of servers to start up
+# Added by Google
 RPCNFSDCOUNT=256
-
-# Runtime priority of server (see nice(1))
-RPCNFSDPRIORITY=0
-
-# Options for rpc.mountd.
-# If you have a port-based firewall, you might want to set up
-# a fixed port here using the --port option. For more information,
-# see rpc.mountd(8) or http://wiki.debian.org/SecuringNFS
-# To disable NFSv4 on the server, specify '--no-nfs-version 4' here
-RPCMOUNTDOPTS="--manage-gids"
-
-# Do you want to start the svcgssd daemon? It is only required for Kerberos
-# exports. Valid alternatives are "yes" and "no"; the default is "no".
-NEED_SVCGSSD=""
-
-# Options for rpc.svcgssd.
-RPCSVCGSSDOPTS=""
-
 """.format(APPS_DIR))
     f.close()
 
@@ -1043,19 +1040,9 @@ def main():
 
     hostname = socket.gethostname()
 
-    METADATA_URL = "http://metadata.google.internal/computeMetadata/v1/instance"
-    
-    req = urllib.request.Request("{}/{}".format(METADATA_URL, "tags"))
-    print("Trying URL '%s'" % ("tags"), file=sys.stderr)
-    req.add_header('Metadata-Flavor', 'Google')
-    resp = urllib.request.urlopen(req)
-    INSTANCE_TYPE = re.sub('[\]\["]','',resp.read().decode("utf-8"))
-    print("Instance Type = '%s'" % (INSTANCE_TYPE))
+    # setup_selinux()
 
-
-    #setup_selinux()
-
-    if INSTANCE_TYPE == "compute":
+    if INSTANCE_TYPE == "compute" or INSTANCE_TYPE == 'login':
         while not have_internet():
             print("Waiting for internet connection")
 
@@ -1081,7 +1068,12 @@ def main():
     if (CONTROLLER_SECONDARY_DISK and (INSTANCE_TYPE == "controller")):
         setup_secondary_disks()
 
+    setup_nfs_apps_vols()
+    setup_nfs_home_vols()
+    setup_nfs_sec_vols()
+
     if INSTANCE_TYPE == "controller" or INSTANCE_TYPE == 'login':
+#        mount_nfs_vols()
         start_munge()
         install_slurm()
 
@@ -1140,13 +1132,7 @@ def main():
     elif INSTANCE_TYPE == "compute":
         install_compute_service_scripts()
         setup_slurmd_cronjob()
-
-        setup_nfs_apps_vols()
-        setup_nfs_home_vols()
-        setup_nfs_sec_vols()
-
         mount_nfs_vols()
-
         start_munge()
 
         try:
@@ -1185,11 +1171,11 @@ def main():
         # Wait for the compute image to mark the partition up
         part_state = subprocess.check_output(shlex.split(
             "{}/bin/scontrol show part {}".format(
-                CURR_SLURM_DIR, DEF_PART_NAME)))
-        while b'State=UP' not in part_state:
+                CURR_SLURM_DIR, DEF_PART_NAME))).decode('utf-8')
+        while "State=UP" not in part_state:
             part_state = subprocess.check_output(shlex.split(
                 "{}/bin/scontrol show part {}".format(
-                    CURR_SLURM_DIR, DEF_PART_NAME)))
+                    CURR_SLURM_DIR, DEF_PART_NAME))).decode('utf-8')
 
     end_motd()
 

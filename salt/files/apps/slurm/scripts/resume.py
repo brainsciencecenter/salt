@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # Copyright 2017 SchedMD LLC.
 # Modified for use with the Slurm Resource Manager.
@@ -38,8 +38,8 @@ MACHINE_TYPE = 'n1-standard-2'
 CPU_PLATFORM = ''
 PREEMPTIBLE  = False
 EXTERNAL_IP  = False
-SHARED_VPC_HOST_PROJ = ''
-VPC_SUBNET   = ''
+SHARED_VPC_HOST_PROJ = "pennbrain-host-3097383fff"
+VPC_SUBNET   = "holder-subnet"
 
 DISK_SIZE_GB = '10'
 DISK_TYPE    = 'pd-standard'
@@ -48,7 +48,7 @@ LABELS       = {}
 
 NETWORK_TYPE = 'subnetwork'
 NETWORK      = "projects/{}/regions/{}/subnetworks/{}-slurm-subnet".format(PROJECT, REGION, CLUSTER_NAME)
-
+#NETWORK      = "projects/{}/regions/{}/subnetworks/{}-slurm-subnet".format(SHARED_VPC_HOST_PROJ, REGION, CLUSTER_NAME)bsc-host-network 
 GPU_TYPE     = ''
 GPU_COUNT    = '0'
 
@@ -107,7 +107,7 @@ def update_slurm_node_addrs(compute):
             subprocess.call(shlex.split(node_update_cmd))
 
             logging.info("Instance " + node_name + " is now up")
-        except Exception, e:
+        except Exception as  e:
             logging.exception("Error in adding {} to slurm ({})".format(
                 node_name, str(e)))
 # [END update_slurm_node_addrs]
@@ -148,7 +148,7 @@ def create_instance(compute, project, zone, instance_type, instance_name,
             ]
         }],
 
-        'tags': {'items': ['compute'] },
+        'tags': {'items': ['compute', 'holder'] },
 
         'metadata': {
             'items': [{
@@ -262,7 +262,7 @@ def add_instances(compute, source_disk_image, have_compute_img, node_list):
             batch.execute(http=http)
             if i < (len(batch_list) - 1):
                 time.sleep(30)
-    except Exception, e:
+    except Exception as  e:
         logging.exception("error in add batch: " + str(e))
 
     if UPDATE_NODE_ADDRS:
@@ -279,7 +279,7 @@ def main(arg_nodes):
 
     # Get node list
     show_hostname_cmd = "{} show hostnames {}".format(SCONTROL, arg_nodes)
-    nodes_str = subprocess.check_output(shlex.split(show_hostname_cmd))
+    nodes_str = subprocess.check_output(shlex.split(show_hostname_cmd)).decode('utf-8')
     node_list = nodes_str.splitlines()
 
     have_compute_img = False
@@ -294,7 +294,7 @@ def main(arg_nodes):
         have_compute_img = True
     except:
         image_response = compute.images().getFromFamily(
-            project='ubuntu-os-cloud', family='ubuntu-1910').execute()
+            project='centos-cloud', family='centos-7').execute()
         source_disk_image = image_response['selfLink']
 
     while True:
