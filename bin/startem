@@ -10,22 +10,22 @@ Zone=us-east1-b
 ServiceAccount=slurm-gcp@holder-dd34a9.iam.gserviceaccount.com
 Network=https://www.googleapis.com/compute/v1/projects/pennbrain-host-3097383fff/global/networks/bsc-host-network
 SubNet=https://www.googleapis.com/compute/v1/projects/pennbrain-host-3097383fff/regions/us-east1/subnetworks/${Group}-subnet
-ImageSource=ubuntu-1910-eoan-v20200107
-BootDiskSource=https://compute.googleapis.com/compute/v1/projects/pennbrain-center/global/images/ubuntu-1910-eoan-v20200107
+ImageSource=ubuntu-1910-eoan-v20200129
+BootDiskSource=https://compute.googleapis.com/compute/v1/projects/pennbrain-center/global/images/ubuntu-1910-eoan-v20200129
 ExternalIP=35.231.194.165
 MachineType=n1-standard-2
-#HostName=holder.pennbrain.upenn.edu
+MinionID=holder.pennbrain.upenn.edu
 
-#	--address=$ExternalIP							\
-InstanceName=${Group}-controller
+InstanceName=${ClusterName}-controller
 gcloud --verbosity=none -q beta compute instances create $InstanceName		\
 	--project=holder-dd34a9 						\
 	--zone=$Zone								\
+	--address=$ExternalIP							\
 	--machine-type=$MachineType						\
 	--subnet=$SubNet							\
 	--network-tier=PREMIUM							\
 	--tags=controller,holder                                                \
-        --metadata="enable-oslogin=TRUE"					\
+        --metadata="enable-oslogin=TRUE,MinionID=${MinionID}"			\
 	--metadata-from-file=minion-pem=minion-holder.pennbrain.upenn.edu.pem,minion-pub=minion-holder.pennbrain.upenn.edu.pub,startup-script=/home/holder/Work/CfN/salt/bin/slurm-startup-script.sh									      \
 	--service-account=$ServiceAccount					\
 	--maintenance-policy=MIGRATE						\
