@@ -25,8 +25,8 @@ gcloud --verbosity=none -q beta compute instances create $InstanceName		\
 	--subnet=$SubNet							\
 	--network-tier=PREMIUM							\
 	--tags=controller,holder                                                \
-        --metadata="enable-oslogin=TRUE,MinionID=${MinionID}"			\
-	--metadata-from-file=minion-pem=minion-holder.pennbrain.upenn.edu.pem,minion-pub=minion-holder.pennbrain.upenn.edu.pub,startup-script=/home/holder/Work/CfN/salt/bin/slurm-startup-script.sh									      \
+        --metadata="enable-oslogin=TRUE,MinionID=${MinionID},SaltState=attributes/bsc-compute"			\
+	--metadata-from-file=MinionPem=minion-holder.pennbrain.upenn.edu.pem,MinionPub=minion-holder.pennbrain.upenn.edu.pub,startup-script=/home/holder/Work/CfN/salt/bin/installSaltOnGCPMinion		\
 	--service-account=$ServiceAccount					\
 	--maintenance-policy=MIGRATE						\
 	--scopes=cloud-platform							\

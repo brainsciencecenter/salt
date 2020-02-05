@@ -773,8 +773,8 @@ def install_slurm():
     if not os.path.exists('build'):
         os.makedirs('build')
     os.chdir('build')
-    subprocess.call(['../configure', '--prefix=%s' % SLURM_PREFIX,
-                     '--sysconfdir=%s/etc' % CURR_SLURM_DIR, '--enable-x11'])
+    subprocess.call(['../configure', '--prefix=%s' % (SLURM_PREFIX),
+                     '--sysconfdir=%s/etc' % (CURR_SLURM_DIR), '--enable-x11'])
     subprocess.call(['make', '-j', 'install'])
 
     subprocess.call(shlex.split("ln -s %s %s" % (SLURM_PREFIX, CURR_SLURM_DIR)))
@@ -791,7 +791,7 @@ def install_slurm():
     install_slurm_conf()
     install_slurmdbd_conf()
     install_cgroup_conf()
-    install_meta_files()
+    #install_meta_files()
 
 #END install_slurm()
 

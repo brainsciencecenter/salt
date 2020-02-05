@@ -12,15 +12,17 @@ then
 
 	echo "$MinionID" > /etc/salt/minion_id
 
-	curl -L https://bootstrap.saltstack.com | sudo sh -s -- git develop
+	curl -L https://bootstrap.saltstack.com | sudo sh -s -- -x python3 git develop
 
 	sed -i '/^#master:.*$/s//master: salt.cfn.upenn.edu/' /etc/salt/minion
 	sed -i '/^#hash_type.*$:/s//hash_type: sha256/' /etc/salt/minion
-	getMetadata attributes/minion-pem > /etc/salt/pki/minion/minion.pem
-	getMetadata attributes/minion-pub > /etc/salt/pki/minion/minion.pub
+	getMetadata attributes/MinionPem > /etc/salt/pki/minion/minion.pem
+	getMetadata attributes/MinionPub > /etc/salt/pki/minion/minion.pub
 	service salt-minion restart
 
-	salt-call state.apply software/files
+	SaltState=$(getMetadata attributes/SaltState)
+
+	salt-call state.apply "$SaltState"
 fi
 
 
