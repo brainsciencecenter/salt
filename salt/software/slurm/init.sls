@@ -1,4 +1,4 @@
 include:
   - {{slspath}}/dependencies
-#  - {{slspath}}/install
+  - {{slspath}}/install
 

@@ -6,16 +6,29 @@ AddAptGetKey:
 gcp-packages:
   pkg.installed:
     - pkgs:
-      - tmux
+      - aptitude
+      - csvkit
       - emacs
+      - finger
+      - gdm3
+      - gnome-panel
+      - gnome-settings-daemon
+      - gnome-terminal
       - iproute2
       - jq
+      - metacity
+      - nautilus
       - nmap
       - python3
       - python3-pip
       - strace
+      - tmux
       - unzip
+      - tightvncserver
       - x11-apps
+      - xfonts-100dpi
+      - xfonts-75dpi
+      - xfce4
 
 # pip3 installed flywheel-sdk globre tzlocal 
 # pip install flywheel-sdk
