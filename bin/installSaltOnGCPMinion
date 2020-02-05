@@ -20,7 +20,9 @@ then
 	getMetadata attributes/MinionPub > /etc/salt/pki/minion/minion.pub
 	service salt-minion restart
 
-	salt-call state.apply software/files
+	SaltState=$(getMetadata attributes/SaltState)
+
+	salt-call state.apply "$SaltState"
 fi
 
 
