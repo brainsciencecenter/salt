@@ -14,20 +14,8 @@
 {% set DefSlurmAccount = 'default' %}
 {% set DefSlurmUsers = [ 'holder' ] %}
 
-slurm-group:
-  group.present:
-  - name: slurm
-  - system: True
-
-slurm-user:
-  user.present:
-    - name: slurm   
-    - gid: slurm
-    - home: /var/lib/slurm
-    - createhome: True
-    - system: True
-    - shell: /bin/bash
-    - fullname: Slurm User
+include:
+  - {{ slspath }}/user+group
 
 {% for script in SlurmScripts %}
 {{ SlurmScriptDir }}/{{ script }}:

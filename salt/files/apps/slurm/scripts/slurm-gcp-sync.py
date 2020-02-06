@@ -124,7 +124,7 @@ def main():
             if "items" in resp:
                 for instance in resp['items']:
                     if instance['name'] in NodeNames:
-                        g_nodes.extend(instance)
+                        g_nodes.append(instance)
                 # g_nodes.extend(resp['items'])
             if "nextPageToken" in resp:
                 page_token = resp['nextPageToken']
