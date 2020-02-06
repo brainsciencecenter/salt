@@ -97,6 +97,8 @@ def main():
                'paste -sd",\n"').format(SCONTROL)
         nodes = subprocess.check_output(cmd, shell=True).decode('utf-8')
         if nodes:
+            NodeNames = list(map(lambda x: x.split(',')[0], nodes.rstrip().splitlines()))
+
             # result is a list of tuples like:
             # (nodename, (base='base_state', flags=<set of state flags>))
             # from 'nodename,base_state+flag1+flag2'
@@ -120,7 +122,10 @@ def main():
                       filter='name={}-compute*'.format(CLUSTER_NAME)).execute()
 
             if "items" in resp:
-                g_nodes.extend(resp['items'])
+                for instance in resp['items']:
+                    if instance['name'] in NodeNames:
+                        g_nodes.extend(instance)
+                # g_nodes.extend(resp['items'])
             if "nextPageToken" in resp:
                 page_token = resp['nextPageToken']
                 continue

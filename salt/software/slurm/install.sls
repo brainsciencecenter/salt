@@ -8,35 +8,57 @@
 {% set SlurmCurrent = '/apps/slurm/current' %}
 {% set SlurmCurrentEtc = SlurmCurrent + '/etc' %}
 {% set SlurmCurrentBin = SlurmCurrent + '/bin' %}
+{% set SlurmScriptDir = SlurmDir + '/scripts' %}
 {% set SlurmRun = '/var/run/slurm' %}
 {% set SlurmScripts = ['compute-shutdown', 'custom-controller-install', 'slurm-gcp-sync.py', 'suspend.py', 'custom-compute-install', 'resume.py', 'startup-script.py' ] %}
 {% set DefSlurmAccount = 'default' %}
 {% set DefSlurmUsers = [ 'holder' ] %}
 
+slurm-group:
+  group.present:
+  - name: slurm
+  - system: True
+
+slurm-user:
+  user.present:
+    - name: slurm   
+    - gid: slurm
+    - home: /var/lib/slurm
+    - createhome: True
+    - system: True
+    - shell: /bin/bash
+    - fullname: Slurm User
+
 {% for script in SlurmScripts %}
-{{ SlurmDir }}/scripts/{{ script }}:
+{{ SlurmScriptDir }}/{{ script }}:
   file.managed:
-    - source: salt://files/{{ SlurmDir }}/scripts/{{ script }}
+    - source: salt://files/{{ SlurmScriptDir }}/{{ script }}
     - user: root
     - group: root
     - mode: 755
     - makedirs: True
 {% endfor %}
 
-#{{ SlurmDir }}/src:
-#  file.directory:
-#    - user: root
-#    - group: root
-#    - dir_mode: 755
-#    - makedirs: True
-#
-#/var/spool/slurm/ctld:
-#  file.directory:
-#    - user: slurm
-#    - group: slurm
-#    - dir_mode: 755
-#    - makedirs: True
-#
+{{ SlurmDir }}/src:
+  file.directory:
+    - user: root
+    - group: root
+    - dir_mode: 755
+    - makedirs: True
+
+/var/spool/slurm/ctld:
+  file.directory:
+    - user: slurm
+    - group: slurm
+    - dir_mode: 755
+    - makedirs: True
+
+InstallSlurm:
+  cmd.run:
+    - name: {{ SlurmScriptDir }}/startup-script.py
+    - unless:
+        test -e {{ SlurmRootDir }}
+
 #slurm-link:
 #  cmd.run:
 #    - name: ln -s {{ SlurmRootDir }} {{ SlurmCurrent }}
@@ -79,27 +101,12 @@
 #    - require:
 #       - pkg: python-pip
 #
-#slurm-group:
-#  group.present:
-#  - name: slurm
-#  - system: True
-#
 #/etc/profile.d/slurm.sh:
 #  file.managed:
 #    - user: root
 #    - group: root
 #    - mode: 755
 #    - source: salt://files/etc/profile.d/slurm.sh
-#
-#slurm-user:
-#  user.present:
-#    - name: slurm   
-#    - gid: slurm
-#    - home: /var/lib/slurm
-#    - createhome: True
-#    - system: True
-#    - shell: /bin/bash
-#    - fullname: Slurm User
 #
 #{{ SlurmCurrentEtc }}/slurm.conf:
 #  file.managed:

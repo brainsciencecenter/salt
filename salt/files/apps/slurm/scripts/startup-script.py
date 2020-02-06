@@ -34,8 +34,6 @@ def getMetadata(key):
     resp = urllib.request.urlopen(req)
     return(resp.read().decode("utf-8"))
 
-ClusterConfig = yaml.load(getMetadata('attributes/cluster-config'),Loader=yaml.FullLoader)
-
 CLUSTER_NAME      = 'holder-cluster'
 MACHINE_TYPE      = 'n1-standard-2' # e.g. n1-standard-1, n1-starndard-2
 
@@ -1167,15 +1165,15 @@ def main():
             pass
 
 
-    if hostname != CLUSTER_NAME + "-compute-image":
-        # Wait for the compute image to mark the partition up
-        part_state = subprocess.check_output(shlex.split(
-            "{}/bin/scontrol show part {}".format(
-                CURR_SLURM_DIR, DEF_PART_NAME))).decode('utf-8')
-        while "State=UP" not in part_state:
-            part_state = subprocess.check_output(shlex.split(
-                "{}/bin/scontrol show part {}".format(
-                    CURR_SLURM_DIR, DEF_PART_NAME))).decode('utf-8')
+#    if hostname != CLUSTER_NAME + "-compute-image":
+#        # Wait for the compute image to mark the partition up
+#        part_state = subprocess.check_output(shlex.split(
+#            "{}/bin/scontrol show part {}".format(
+#                CURR_SLURM_DIR, DEF_PART_NAME))).decode('utf-8')
+#        while "State=UP" not in part_state:
+#            part_state = subprocess.check_output(shlex.split(
+#                "{}/bin/scontrol show part {}".format(
+#                    CURR_SLURM_DIR, DEF_PART_NAME))).decode('utf-8')
 
     end_motd()
 

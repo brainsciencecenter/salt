@@ -7,28 +7,64 @@ gcp-packages:
   pkg.installed:
     - pkgs:
       - aptitude
+      - bind9-host
+      - build-essential
+      - checkinstall
       - csvkit
+      - dnsutils
       - emacs
+      - environment-modules
       - finger
       - gdm3
+      - git
       - gnome-panel
       - gnome-settings-daemon
       - gnome-terminal
+      - hwloc
       - iproute2
       - jq
+      - libextutils-makemaker-cpanfile-perl
+      - libhwloc-dev
+      - liblua5.3-dev
+      - libmariadb-dev
+      - libmariadbclient-dev
+      - libmunge-dev
+      - libmunge2
+      - libncurses-dev
+      - libnfs-utils
+      - libnuma-dev
+      - libopenmpi-dev
+      - libpam0g-dev
+      - libpam0g-dev
+      - libreadline-dev
+      - librrd-dev
+      - libssl-dev
+      - linux-headers-gcp
+      - lua5.3
+      - man2html
+      - mariadb-client
       - metacity
+      - munge
       - nautilus
       - nmap
+      - numactl
+      - openmpi-bin
+      - pdsh
+      - python-pip
       - python3
       - python3-pip
+      - ruby
+      - ruby-dev
       - strace
+      - tightvncserver
       - tmux
       - unzip
-      - tightvncserver
+      - vim
+      - wget
       - x11-apps
+      - xfce4
       - xfonts-100dpi
       - xfonts-75dpi
-      - xfce4
 
 # pip3 installed flywheel-sdk globre tzlocal 
 # pip install flywheel-sdk
