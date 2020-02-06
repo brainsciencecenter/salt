@@ -10,6 +10,7 @@ gcp-packages:
       - bind9-host
       - build-essential
       - checkinstall
+      - colord
       - csvkit
       - dnsutils
       - emacs
@@ -46,6 +47,8 @@ gcp-packages:
       - metacity
       - munge
       - nautilus
+      - nfs-common
+      - mlocate
       - nmap
       - numactl
       - openmpi-bin
@@ -55,6 +58,7 @@ gcp-packages:
       - python3-pip
       - ruby
       - ruby-dev
+      - singularity-container
       - strace
       - tightvncserver
       - tmux

@@ -5,6 +5,8 @@ ConditionPathExists={{ SlurmCurrent }}/etc/slurm.conf
 
 [Service]
 Type=forking
+RuntimeDirectory=slurmd
+RuntimeDirectoryMode=755
 EnvironmentFile=-/etc/sysconfig/slurmd
 ExecStart={{ SlurmCurrent }}/sbin/slurmd $SLURMD_OPTIONS
 ExecReload=/bin/kill -HUP $MAINPID

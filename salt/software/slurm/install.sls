@@ -89,34 +89,27 @@ InstallSlurm:
 #    - require:
 #       - pkg: python-pip
 #
-#/etc/profile.d/slurm.sh:
-#  file.managed:
-#    - user: root
-#    - group: root
-#    - mode: 755
-#    - source: salt://files/etc/profile.d/slurm.sh
-#
-#{{ SlurmCurrentEtc }}/slurm.conf:
-#  file.managed:
-#    - source: salt://{{ slspath }}/slurm.conf.jinja
-#    - user: root
-#    - group: root
-#    - mode: 644
-#    - template: jinja
-#    - defaults:
-#        AccountingStorageType: accounting_storage/slurmdbd
-#        ClusterName: "holder-cluster"
-#        ControlMachine: "holder"
-#        SchedulerType: "sched/backfill"
-#        SlurmctldDebug: "info"
-#        SlurmctldLogFiile: "/apps/slurm/log/slurm.log"
-#        SlurmDebug: "info"
-#        SlurmdLogFile: "/apps/slurm/log/slurm.log"
-#        JobCompType: "jobcomp/none"
-#        Nodes: "NodeName=linux[1-32] Procs=1 State=UNKNOWN"
-#        Partitions: "PartitionName=debug Nodes=ALL Default=YES MaxTime=INFINITE State=UP"
-#
-#
+{{ SlurmCurrentEtc }}/slurm.conf:
+  file.managed:
+    - source: salt://{{ slspath }}/slurm.conf.jinja
+    - user: root
+    - group: root
+    - mode: 644
+    - template: jinja
+    - defaults:
+        AccountingStorageType: accounting_storage/slurmdbd
+        ClusterName: "holder-cluster"
+        ControlMachine: "holder-cluster-controller"
+        SchedulerType: "sched/backfill"
+        SlurmctldDebug: "info"
+        SlurmctldLogFiile: "/apps/slurm/log/slurm.log"
+        SlurmDebug: "info"
+        SlurmdLogFile: "/apps/slurm/log/slurm.log"
+        JobCompType: "jobcomp/none"
+        Nodes: "NodeName=linux[1-32] Procs=1 State=UNKNOWN"
+        Partitions: "PartitionName=debug Nodes=ALL Default=YES MaxTime=INFINITE State=UP"
+
+
 #{{ SlurmCurrentEtc }}/slurmdbd.conf:
 #  file.managed:
 #    - source: salt://{{ slspath }}/slurmdbd.conf.jinja
@@ -151,19 +144,19 @@ InstallSlurm:
 #    - mode: 644
 #
 #
-#/etc/systemd/system/slurmctld.service:
-#  file.managed:
-#    - source: salt://{{ slspath }}/slurmctld.service.jinja
-#    - user: root
-#    - group: root
-#    - mode: 644
-#    - watch:
-#        - file: {{ SlurmCurrentEtc }}/slurm.conf
-#    - template: jinja
-#    - defaults:
-#        SlurmCurrent: {{ SlurmCurrent }}
-#        SlurmRun: {{ SlurmRun }}
-#
+/usr/lib/systemd/system/slurmctld.service:
+  file.managed:
+    - source: salt://{{ slspath }}/slurmctld.service.jinja
+    - user: root
+    - group: root
+    - mode: 644
+    - watch:
+        - file: {{ SlurmCurrentEtc }}/slurm.conf
+    - template: jinja
+    - defaults:
+        SlurmCurrent: {{ SlurmCurrent }}
+        SlurmRun: {{ SlurmRun }}
+
 #/etc/systemd/system/slurmdbd.service:
 #  file.managed:
 #    - source: salt://{{ slspath }}/slurmdbd.service.jinja
@@ -178,18 +171,6 @@ InstallSlurm:
 #        SlurmCurrent: {{ SlurmCurrent }}
 #        SlurmRun: {{ SlurmRun }}
 #
-##/etc/systemd/system/slurmd.service:
-##  file.managed:
-##    - source: salt://{{ slspath }}/slurmd.service.jinja
-##    - name: 
-##    - user: root
-##    - group: root
-##    - mode: 644
-##    - template: jinja
-##    - defaults:
-##        SlurmCurrent: {{ SlurmCurrent }}
-##        SlurmRun: {{ SlurmRun }}
-##
 #munge.service:
 #  service.running:
 #    - enable: True

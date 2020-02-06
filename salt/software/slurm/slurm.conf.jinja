@@ -39,6 +39,7 @@ MpiDefault=none
 #PlugStackConfig=
 #PrivateData=jobs
 LaunchParameters=send_gids
+PrologFlags=x11
 
 # Always show cloud nodes. Otherwise cloud nodes are hidden until they are
 # resumed. Having them shown can be useful in detecting downed nodes.
@@ -171,6 +172,10 @@ SlurmctldParameters=cloud_dns,idle_on_node_suspend
 CommunicationParameters=NoAddrCache
 #
 # COMPUTE NODES
+#
 NodeName=DEFAULT Sockets=1 CoresPerSocket=1 ThreadsPerCore=2 RealMemory=7055 State=UNKNOWN
-NodeName=holder-compute[1-10] State=CLOUDNodeName=holder-cluster-compute-image
-PartitionName=debug Nodes=holder-compute[1-10] Default=YES MaxTime=INFINITE State=UP LLN=yes
+NodeName=holder-cluster-compute[0-2] State=CLOUD
+NodeName=proj-a-n1-standard-2-[00-02] State=CLOUD
+
+PartitionName=debug Nodes=holder-cluster-compute[0-2] Default=YES MaxTime=INFINITE State=UP LLN=yes
+PartitionName=proj-a-n1-standard-2 Nodes=proj-a-n1-standard-2-[00-02] Default=NO MaxTime=INFINITE State=UP LLN=yes

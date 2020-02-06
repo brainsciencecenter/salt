@@ -120,6 +120,8 @@ def main():
             resp = compute.instances().list(
                       project=PROJECT, zone=ZONE, pageToken=page_token,
                       filter='name={}-compute*'.format(CLUSTER_NAME)).execute()
+            resp = compute.instances().list(
+                      project=PROJECT, zone=ZONE, pageToken=page_token).execute()
 
             if "items" in resp:
                 for instance in resp['items']:
