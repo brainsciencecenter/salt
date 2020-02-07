@@ -1,0 +1,3 @@
+" turn off bracketted insert mode.
+" with out this, middle mouse clicks do not paste the cut buffer in to vim
+set t_BE=
