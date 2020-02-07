@@ -286,7 +286,7 @@ def main(arg_nodes):
     try:
         image_response = compute.images().getFromFamily(
             project = PROJECT,
-            family = CLUSTER_NAME + "-compute-image-family").execute()
+            family = CLUSTER_NAME + "-compute-image").execute()
         if image_response['status'] != "READY":
             logging.debug("image not ready, using the startup script")
             raise Exception("image not ready")
@@ -294,7 +294,7 @@ def main(arg_nodes):
         have_compute_img = True
     except:
         image_response = compute.images().getFromFamily(
-            project='centos-cloud', family='centos-7').execute()
+            project='ubuntu-os-cloud', family='ubuntu-1910').execute()
         source_disk_image = image_response['selfLink']
 
     while True:

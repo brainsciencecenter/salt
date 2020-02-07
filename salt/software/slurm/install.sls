@@ -8,35 +8,45 @@
 {% set SlurmCurrent = '/apps/slurm/current' %}
 {% set SlurmCurrentEtc = SlurmCurrent + '/etc' %}
 {% set SlurmCurrentBin = SlurmCurrent + '/bin' %}
+{% set SlurmScriptDir = SlurmDir + '/scripts' %}
 {% set SlurmRun = '/var/run/slurm' %}
 {% set SlurmScripts = ['compute-shutdown', 'custom-controller-install', 'slurm-gcp-sync.py', 'suspend.py', 'custom-compute-install', 'resume.py', 'startup-script.py' ] %}
 {% set DefSlurmAccount = 'default' %}
 {% set DefSlurmUsers = [ 'holder' ] %}
 
+include:
+  - {{ slspath }}/user+group
+
 {% for script in SlurmScripts %}
-{{ SlurmDir }}/scripts/{{ script }}:
+{{ SlurmScriptDir }}/{{ script }}:
   file.managed:
-    - source: salt://files/{{ SlurmDir }}/scripts/{{ script }}
+    - source: salt://files/{{ SlurmScriptDir }}/{{ script }}
     - user: root
     - group: root
     - mode: 755
     - makedirs: True
 {% endfor %}
 
-#{{ SlurmDir }}/src:
-#  file.directory:
-#    - user: root
-#    - group: root
-#    - dir_mode: 755
-#    - makedirs: True
-#
-#/var/spool/slurm/ctld:
-#  file.directory:
-#    - user: slurm
-#    - group: slurm
-#    - dir_mode: 755
-#    - makedirs: True
-#
+{{ SlurmDir }}/src:
+  file.directory:
+    - user: root
+    - group: root
+    - dir_mode: 755
+    - makedirs: True
+
+/var/spool/slurm/ctld:
+  file.directory:
+    - user: slurm
+    - group: slurm
+    - dir_mode: 755
+    - makedirs: True
+
+InstallSlurm:
+  cmd.run:
+    - name: {{ SlurmScriptDir }}/startup-script.py
+    - unless:
+        test -e {{ SlurmRootDir }}
+
 #slurm-link:
 #  cmd.run:
 #    - name: ln -s {{ SlurmRootDir }} {{ SlurmCurrent }}
@@ -79,49 +89,27 @@
 #    - require:
 #       - pkg: python-pip
 #
-#slurm-group:
-#  group.present:
-#  - name: slurm
-#  - system: True
-#
-#/etc/profile.d/slurm.sh:
-#  file.managed:
-#    - user: root
-#    - group: root
-#    - mode: 755
-#    - source: salt://files/etc/profile.d/slurm.sh
-#
-#slurm-user:
-#  user.present:
-#    - name: slurm   
-#    - gid: slurm
-#    - home: /var/lib/slurm
-#    - createhome: True
-#    - system: True
-#    - shell: /bin/bash
-#    - fullname: Slurm User
-#
-#{{ SlurmCurrentEtc }}/slurm.conf:
-#  file.managed:
-#    - source: salt://{{ slspath }}/slurm.conf.jinja
-#    - user: root
-#    - group: root
-#    - mode: 644
-#    - template: jinja
-#    - defaults:
-#        AccountingStorageType: accounting_storage/slurmdbd
-#        ClusterName: "holder-cluster"
-#        ControlMachine: "holder"
-#        SchedulerType: "sched/backfill"
-#        SlurmctldDebug: "info"
-#        SlurmctldLogFiile: "/apps/slurm/log/slurm.log"
-#        SlurmDebug: "info"
-#        SlurmdLogFile: "/apps/slurm/log/slurm.log"
-#        JobCompType: "jobcomp/none"
-#        Nodes: "NodeName=linux[1-32] Procs=1 State=UNKNOWN"
-#        Partitions: "PartitionName=debug Nodes=ALL Default=YES MaxTime=INFINITE State=UP"
-#
-#
+{{ SlurmCurrentEtc }}/slurm.conf:
+  file.managed:
+    - source: salt://{{ slspath }}/slurm.conf.jinja
+    - user: root
+    - group: root
+    - mode: 644
+    - template: jinja
+    - defaults:
+        AccountingStorageType: accounting_storage/slurmdbd
+        ClusterName: "holder-cluster"
+        ControlMachine: "holder-cluster-controller"
+        SchedulerType: "sched/backfill"
+        SlurmctldDebug: "info"
+        SlurmctldLogFiile: "/apps/slurm/log/slurm.log"
+        SlurmDebug: "info"
+        SlurmdLogFile: "/apps/slurm/log/slurm.log"
+        JobCompType: "jobcomp/none"
+        Nodes: "NodeName=linux[1-32] Procs=1 State=UNKNOWN"
+        Partitions: "PartitionName=debug Nodes=ALL Default=YES MaxTime=INFINITE State=UP"
+
+
 #{{ SlurmCurrentEtc }}/slurmdbd.conf:
 #  file.managed:
 #    - source: salt://{{ slspath }}/slurmdbd.conf.jinja
@@ -156,19 +144,19 @@
 #    - mode: 644
 #
 #
-#/etc/systemd/system/slurmctld.service:
-#  file.managed:
-#    - source: salt://{{ slspath }}/slurmctld.service.jinja
-#    - user: root
-#    - group: root
-#    - mode: 644
-#    - watch:
-#        - file: {{ SlurmCurrentEtc }}/slurm.conf
-#    - template: jinja
-#    - defaults:
-#        SlurmCurrent: {{ SlurmCurrent }}
-#        SlurmRun: {{ SlurmRun }}
-#
+/usr/lib/systemd/system/slurmctld.service:
+  file.managed:
+    - source: salt://{{ slspath }}/slurmctld.service.jinja
+    - user: root
+    - group: root
+    - mode: 644
+    - watch:
+        - file: {{ SlurmCurrentEtc }}/slurm.conf
+    - template: jinja
+    - defaults:
+        SlurmCurrent: {{ SlurmCurrent }}
+        SlurmRun: {{ SlurmRun }}
+
 #/etc/systemd/system/slurmdbd.service:
 #  file.managed:
 #    - source: salt://{{ slspath }}/slurmdbd.service.jinja
@@ -183,18 +171,6 @@
 #        SlurmCurrent: {{ SlurmCurrent }}
 #        SlurmRun: {{ SlurmRun }}
 #
-##/etc/systemd/system/slurmd.service:
-##  file.managed:
-##    - source: salt://{{ slspath }}/slurmd.service.jinja
-##    - name: 
-##    - user: root
-##    - group: root
-##    - mode: 644
-##    - template: jinja
-##    - defaults:
-##        SlurmCurrent: {{ SlurmCurrent }}
-##        SlurmRun: {{ SlurmRun }}
-##
 #munge.service:
 #  service.running:
 #    - enable: True
