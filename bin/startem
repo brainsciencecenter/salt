@@ -11,27 +11,40 @@ ServiceAccount=slurm-gcp@holder-dd34a9.iam.gserviceaccount.com
 Network=https://www.googleapis.com/compute/v1/projects/pennbrain-host-3097383fff/global/networks/bsc-host-network
 SubNet=https://www.googleapis.com/compute/v1/projects/pennbrain-host-3097383fff/regions/us-east1/subnetworks/${Group}-subnet
 ImageSource=ubuntu-1910-eoan-v20200129
-BootDiskSource=https://compute.googleapis.com/compute/v1/projects/pennbrain-center/global/images/ubuntu-1910-eoan-v20200129
+BootDiskSource=https://compute.googleapis.com/compute/v1/projects/pennbrain-center/global/images/ubuntu-1910-eoan
 ExternalIP=35.231.194.165
 MachineType=n1-standard-2
-MinionID=holder.pennbrain.upenn.edu
 SaltState=configure/bsc-compute
 
-InstanceName=${ClusterName}-controller
-gcloud --verbosity=none -q beta compute instances create $InstanceName		\
+CmdArgs=()
+
+if [ -n "$1" ]
+then
+	InstanceName="$1"
+else
+	InstanceName=${ClusterName}-controller
+	CmdArgs+=( "--address=${ExternalIP}" )
+fi
+
+FQDN="${InstanceName}.pennbrain.upenn.edu"
+MinionID="$FQDN"
+
+# --verbosity=none -q
+
+gcloud beta compute instances create $InstanceName		\
+	"${CmdArgs[@]}"								\
 	--project=holder-dd34a9 						\
 	--zone=$Zone								\
-	--address=$ExternalIP							\
 	--machine-type=$MachineType						\
 	--subnet=$SubNet							\
 	--network-tier=PREMIUM							\
 	--tags=controller,holder                                                \
         --metadata="enable-oslogin=TRUE,MinionID=${MinionID},SaltState=${SaltState}"			\
-	--metadata-from-file=MinionPem=minion-holder.pennbrain.upenn.edu.pem,MinionPub=minion-holder.pennbrain.upenn.edu.pub,startup-script=/home/holder/Work/CfN/salt/bin/installSaltOnGCPMinion		\
+	--metadata-from-file=MinionPem=minion-${MinionID}.pem,MinionPub=minion-${MinionID}.pub,startup-script=/home/holder/Work/CfN/salt/bin/installSaltOnGCPMinion		\
 	--service-account=$ServiceAccount					\
 	--maintenance-policy=MIGRATE						\
 	--scopes=cloud-platform							\
-	--image=ubuntu-1910-eoan-v20200107					\
+	--image=ubuntu-1910-eoan-v20200129					\
 	--image-project=ubuntu-os-cloud						\
 	--boot-disk-size=$BootDiskSize						\
 	--boot-disk-type=pd-standard						\
