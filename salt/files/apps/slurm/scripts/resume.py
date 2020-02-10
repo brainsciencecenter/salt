@@ -32,6 +32,8 @@ from googleapiclient.http import set_user_agent
 CLUSTER_NAME = 'holder-cluster'
 
 PROJECT      = 'holder-dd34a9'
+PROJECT      = 'holder-proj-a'
+IMAGEPROJECT = 'holder-dd34a9'
 ZONE         = 'us-east1-b'
 REGION       = 'us-east1'
 MACHINE_TYPE = 'n1-standard-2'
@@ -44,7 +46,7 @@ VPC_SUBNET   = "holder-subnet"
 DISK_SIZE_GB = '10'
 DISK_TYPE    = 'pd-standard'
 
-LABELS       = {}
+LABELS       = {'billing-project': 'holder_proj-a'}
 
 NETWORK_TYPE = 'subnetwork'
 NETWORK      = "projects/{}/regions/{}/subnetworks/{}-slurm-subnet".format(PROJECT, REGION, CLUSTER_NAME)
@@ -58,7 +60,7 @@ LOGFILE      = '/apps/slurm/log/resume.log'
 TOT_REQ_CNT = 1000
 
 # Set to True if the nodes aren't accessible by dns.
-UPDATE_NODE_ADDRS = False
+UPDATE_NODE_ADDRS = True
 
 instances = {}
 operations = {}
@@ -285,7 +287,7 @@ def main(arg_nodes):
     have_compute_img = False
     try:
         image_response = compute.images().getFromFamily(
-            project = PROJECT,
+            project = IMAGEPROJECT,
             family = CLUSTER_NAME + "-compute-image").execute()
         if image_response['status'] != "READY":
             logging.debug("image not ready, using the startup script")
