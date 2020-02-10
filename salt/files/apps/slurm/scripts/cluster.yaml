@@ -1,0 +1,47 @@
+holder-cluster:
+  controller:
+    project: holder-dd34a9
+    image-source:
+      - https://compute.googleapis.com/compute/v1/projects/holder-dd34a9/global/images/holder-cluster-compute-image
+    minion-id: holder.pennbrain.upenn.edu
+    tags:
+      - controller
+      - holder
+    labels:
+      billing-project: holder-dd34a9
+    machine-type: n1-standard-2
+    boot-disk-size: 10G
+    zone: us-east1-b
+    region: us-east
+    service-account: slurm-gcp@holder-dd34a9.iam.gserviceaccount.com
+    external-ip: 35.231.194.165
+    network: bsc-host-network
+    subnet: holder-dd3499-subnet
+  nodes:
+    - DEFAULT: 
+    - compute-[00-04]: n1-standard-2
+    - n1-highmem-16-[00-04]: n1-highmem-16
+    - n1-gpu-[00-04]
+
+  partitions:
+    - small-proj-a:
+        nodes: compute-[00-09]
+        project: holder-proj-a
+        labels:
+          - billing-project: holder-proj-a
+        pre-emptible: True
+    
+    - big-proj-a:
+        nodes: n1-highmem-16-[00-09]
+        project: holder-proj-a
+        labels:
+          - billing-project: holder-proj-a
+        pre-emptible: False
+    
+    - gpu-proj-a:
+        nodes: gpu-[00-09]
+        project: holder-proj-a
+        labels:
+          - billing-project: holder-proj-a
+        pre-emptible: True
+    
