@@ -30,6 +30,7 @@ import googleapiclient.discovery
 CLUSTER_NAME = 'holder-cluster'
 
 PROJECT      = 'holder-dd34a9'
+Projects     = [ 'holder-dd34a9', 'holder-proj-a' ]
 ZONE         = 'us-east1-b'
 
 SCONTROL     = '/apps/slurm/current/bin/scontrol'
@@ -117,20 +118,21 @@ def main():
         page_token = ""
         g_nodes = []
         while True:
-            resp = compute.instances().list(
-                      project=PROJECT, zone=ZONE, pageToken=page_token,
-                      filter='name={}-compute*'.format(CLUSTER_NAME)).execute()
-            resp = compute.instances().list(
-                      project=PROJECT, zone=ZONE, pageToken=page_token).execute()
-
-            if "items" in resp:
-                for instance in resp['items']:
-                    if instance['name'] in NodeNames:
-                        g_nodes.append(instance)
-                # g_nodes.extend(resp['items'])
-            if "nextPageToken" in resp:
-                page_token = resp['nextPageToken']
-                continue
+            for project in Projects:
+                resp = compute.instances().list(
+                          project=PROJECT, zone=ZONE, pageToken=page_token,
+                          filter='name={}-compute*'.format(CLUSTER_NAME)).execute()
+                resp = compute.instances().list(
+                          project=project, zone=ZONE, pageToken=page_token).execute()
+    
+                if "items" in resp:
+                    for instance in resp['items']:
+                        if instance['name'] in NodeNames:
+                            g_nodes.append(instance)
+                    # g_nodes.extend(resp['items'])
+                if "nextPageToken" in resp:
+                    page_token = resp['nextPageToken']
+                    continue
 
             break;
 
