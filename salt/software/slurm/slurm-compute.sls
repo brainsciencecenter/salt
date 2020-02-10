@@ -37,7 +37,9 @@
         SlurmCurrent: {{ SlurmCurrent }}
         SlurmRun: {{ SlurmRun }}
 
-{% for MountPoint in NFSMounts %}
+{% if SlurmControllerName != grains['host'] %}
+{%   for MountPoint in NFSMounts %}
+
 {{ MountPoint }}:
   mount.mounted:
     - device: {{ SlurmControllerName }}:{{ MountPoint }}
@@ -45,7 +47,10 @@
     - mkmnt: True
     - opts:
         - defaults
-{% endfor %}
+    - unless:
+        test "{{ SlurmControllerName }}" == "$(hostname)"
+
+{%   endfor %}
 
 slurmd:
   service.running:
@@ -54,3 +59,5 @@ slurmd:
 makeSureSlurmdIsEnabled:
   cmd.run:
     - name: systemctl enable slurmd
+
+{% endif %}
