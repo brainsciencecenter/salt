@@ -1,0 +1,15 @@
+#!/bin/bash
+InstanceName="$1"
+ImageName="$2"
+
+if [ -z "$InstanceName" ]
+then
+	echo missing instance name 1>&2
+	exit 1
+fi
+	
+Ver=$(date +%F-%H-%M-%S)
+ClusterComputeImageName="${ImageName}"-"$Ver"
+Zone=us-east1-b
+
+echo gcloud compute images create "$ClusterComputeImageName" --source-disk "$InstanceName" --source-disk-zone "$Zone" --force --family "${ImageName}"

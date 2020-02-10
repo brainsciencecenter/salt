@@ -1,0 +1,3 @@
+#!/bin/bash
+ClusterName="$1"
+gcloud compute images list --filter="name~'$ClusterName'" --format="csv(name)"
