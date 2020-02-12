@@ -1,0 +1,14 @@
+[Unit]
+Description=Prepare compute node
+After=network.online.target
+Wants=network.online.target
+Before=nfs-client.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/compute-startup
+ExecReload=/bin/kill -HUP $MAINPID
+PIDFile=/var/run/slurm/slurmd.pid
+
+[Install]
+WantedBy=multi-user.target
