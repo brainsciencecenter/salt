@@ -1,0 +1,22 @@
+#!/bin/bash
+
+function getMetadata {
+	curl -s -H "Metadata-Flavor:Google" "http://metadata.google.internal/computeMetadata/v1/instance/$1"
+}
+
+ResolvedDomains=$(getMetadata attributes/ResolvedDomains)
+sed -i "s/^#*Domains=.*$/Domains=${ResolvedDomains}/" /etc/systemd/resolved.conf
+
+cat /etc/systemd/resolved.conf | logger
+
+service systemd-resolved restart
+
+mount -a
+
+while ! df | grep -q munge
+do
+	logger -t "$0" "Still waiting for /etc/munge to mount"
+	sleep 1
+done
+
+service munge restart

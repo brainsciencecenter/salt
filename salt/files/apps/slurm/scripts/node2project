@@ -1,0 +1,8 @@
+#!/bin/bash
+
+NodeName="$1"
+
+PartitionName=$(scontrol show nodes | grep -oP "^NodeName=\K(\S+)|Partitions=\K(\S+)" | paste -sd",\n" | grep -P "$NodeName" | cut -f 2 -d ,)
+
+yq -jP r - < /apps/slurm/scripts/cluster.yaml | jq -r '.[].partitions["'${PartitionName}'"].project'
+

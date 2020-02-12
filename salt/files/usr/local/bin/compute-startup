@@ -1,0 +1,57 @@
+#!/bin/bash
+
+CmdName=$(basename "$0")
+
+function getMetadata {
+	curl -s -H "Metadata-Flavor:Google" "http://metadata.google.internal/computeMetadata/v1/instance/$1"
+}
+
+ClusterConfigJson=$(getMetadata attributes/Cluster_YAML | yq -jP r - )
+
+echo "$ClusterConfigJson" | logger -t "$CmdName" -p daemon.info
+
+ControllerJson=$(echo "$ClusterConfigJson" | jq -r '.[].controller')
+NodesJson=$(echo "$ClusterConfigJson" | jq -r '.[].nodes')
+PartitionsJson=$(echo "$ClusterConfigJson" | jq -r '.[].partitions')
+
+function updateDNSSearchDomains {
+	local DNSSearchDomains="$@"
+
+	sed -i "s/^#*Domains=.*$/Domains=$DNSSearchDomains/" /etc/systemd/resolved.conf
+}
+
+function addControllerDomain {
+	local ControllerJson="$1"
+
+	ControllerProject=$(echo "$ControllerJson" | jq -r '.project')
+	ControllerZone=$(echo "$ControllerJson" | jq -r '.zone')
+
+	ControllerInternalDomain="${ControllerZone}.c.${ControllerProject}.internal"
+
+	updateDNSSearchDomains "$ControllerInternalDomain"
+
+	cat /etc/systemd/resolved.conf | logger -t "$CmdName" -p daemon.info
+}
+
+function updateNFSMounts {
+	local ControllerJson="$1"
+
+	sed -i "/[	 ]nfs[	 ]/d" /etc/fstab
+
+	NFSDirs=$(echo "$ControllerJson" | jq -r ".nfs[]")
+	ControllerHostName=$(echo "$ControllerJson" | jq -r ".hostname")
+
+	for dir in $NFSDirs
+	do
+		[ -d "$dir" ] || mkdir -p "$dir"
+		echo "${ControllerHostName}:${dir}	${dir}	nfs	defaults	0	0"
+	done >> /etc/fstab
+
+	cat /etc/fstab | logger -t "$CmdName" -p daemon.info
+}
+
+addControllerDomain "$ControllerJson"
+updateNFSMounts "$ControllerJson"
+
+service systemd-resolved restart
+systemctl daemon-reload

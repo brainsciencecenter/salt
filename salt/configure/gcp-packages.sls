@@ -16,6 +16,7 @@ gcp-packages:
       - emacs
       - environment-modules
       - finger
+      - firefox
       - gdm3
       - git
       - gnome-panel
@@ -37,6 +38,7 @@ gcp-packages:
       - libopenmpi-dev
       - libpam0g-dev
       - libpam0g-dev
+      - libqt4-opengl-dev
       - libreadline-dev
       - librrd-dev
       - libssl-dev
@@ -65,10 +67,12 @@ gcp-packages:
       - unzip
       - vim
       - wget
+      - x2goserver
       - x11-apps
       - xfce4
       - xfonts-100dpi
       - xfonts-75dpi
+      - yq
 
 # pip3 installed flywheel-sdk globre tzlocal 
 # pip install flywheel-sdk

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+rm -f /etc/ssh/ssh_host_*
+rm -f /etc/hostname
+rm -f /etc/salt/minion_id

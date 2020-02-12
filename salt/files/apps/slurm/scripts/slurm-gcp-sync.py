@@ -30,13 +30,17 @@ import googleapiclient.discovery
 CLUSTER_NAME = 'holder-cluster'
 
 PROJECT      = 'holder-dd34a9'
-Projects     = [ 'holder-dd34a9', 'holder-proj-a' ]
 ZONE         = 'us-east1-b'
 
 SCONTROL     = '/apps/slurm/current/bin/scontrol'
 LOGDIR       = '/apps/slurm/log'
 
 TOT_REQ_CNT = 1000
+CLUSTERCONFIGFILE="/apps/slurm/scripts/cluster.yaml"
+
+cmd = 'yq -jP r - "holder-cluster" < {} | jq -r "..|.project?" | sort -u | grep -v "null" '.format(CLUSTERCONFIGFILE)
+projects = subprocess.check_output(cmd, shell=True).decode('utf-8')
+Projects     = projects.rstrip().splitlines()
 
 retry_list = []
 

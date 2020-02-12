@@ -25,8 +25,9 @@ import time
 
 import googleapiclient.discovery
 
-PROJECT      = 'holder-dd34a9'
+#PROJECT      = 'holder-dd34a9'
 ZONE         = 'us-east1-b'
+SCRIPTSPATH  = '/apps/slurm/scripts'
 SCONTROL     = '/apps/slurm/current/bin/scontrol'
 LOGFILE      = '/apps/slurm/log/suspend.log'
 
@@ -62,6 +63,9 @@ def delete_instances(compute, node_list):
             batch_list.insert(
                 curr_batch,
                 compute.new_batch_http_request(callback=delete_instances_cb))
+
+        cmd = ('{}/node2project {}'.format(SCRIPTSPATH, node_name))
+        PROJECT = subprocess.check_output(cmd, shell=True).decode('utf-8').rstrip()
 
         batch_list[curr_batch].add(
             compute.instances().delete(project=PROJECT, zone=ZONE,
