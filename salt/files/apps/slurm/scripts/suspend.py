@@ -19,14 +19,27 @@
 
 import argparse
 import logging
+from jq import jq
+import re
 import shlex
 import subprocess
+import sys
 import time
+import yaml
 
 import googleapiclient.discovery
 
-#PROJECT      = 'holder-dd34a9'
-ZONE         = 'us-east1-b'
+SLURMDIR    = '/apps/slurm'
+SLURMSCRIPTDIR  = SLURMDIR + '/scripts'
+CLUSTERYAMLFILE = SLURMSCRIPTDIR + '/cluster.yaml'
+
+with open(CLUSTERYAMLFILE) as file:
+    ClusterConfig = yaml.load(file, Loader=yaml.FullLoader)
+
+NODECLASS = re.sub("-?\d*$","",sys.argv[1])
+Partition = jq('.[].partitions[]|select(.[].nodes.name | test("^{}.*"))'.format(NODECLASS)).transform(ClusterConfig)
+PROJECT      = jq('.[].project').transform(Partition)
+ZONE         = jq('.[].controller.zone').transform(ClusterConfig)
 SCRIPTSPATH  = '/apps/slurm/scripts'
 SCONTROL     = '/apps/slurm/current/bin/scontrol'
 LOGFILE      = '/apps/slurm/log/suspend.log'
@@ -63,9 +76,6 @@ def delete_instances(compute, node_list):
             batch_list.insert(
                 curr_batch,
                 compute.new_batch_http_request(callback=delete_instances_cb))
-
-        cmd = ('{}/node2project {}'.format(SCRIPTSPATH, node_name))
-        PROJECT = subprocess.check_output(cmd, shell=True).decode('utf-8').rstrip()
 
         batch_list[curr_batch].add(
             compute.instances().delete(project=PROJECT, zone=ZONE,

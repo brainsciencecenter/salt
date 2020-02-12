@@ -19,26 +19,43 @@
 
 import argparse
 import httplib2
+from jq import jq
+import json
 import logging
+import re
 import shlex
 import subprocess
+import sys
 import time
+import yaml
 
 import googleapiclient.discovery
 from google.auth import compute_engine
 import google_auth_httplib2
 from googleapiclient.http import set_user_agent
 
-CLUSTER_NAME = 'holder-cluster'
+SLURMDIR    = '/apps/slurm'
+SLURMSCRIPTDIR  = SLURMDIR + '/scripts'
+CLUSTERYAMLFILE = SLURMSCRIPTDIR + '/cluster.yaml'
 
-PROJECT      = 'holder-dd34a9'
-PROJECT      = 'holder-proj-a'
-IMAGEPROJECT = 'holder-dd34a9'
-ZONE         = 'us-east1-b'
-REGION       = 'us-east1'
-MACHINE_TYPE = 'n1-standard-2'
+with open(CLUSTERYAMLFILE) as file:
+    ClusterConfig = yaml.load(file, Loader=yaml.FullLoader)
+
+CLUSTER_NAME = 'holder-cluster'
+CLUSTER_NAME = jq('keys|.[0]').transform(ClusterConfig)
+NODECLASS = re.sub("-?\d*$","",sys.argv[1])
+Partition = jq('.[].partitions[]|select(.[].nodes.name | test("^{}.*"))'.format(NODECLASS)).transform(ClusterConfig)
+PROJECT      = jq('.[].project').transform(Partition)
+ControllerProject = jq('.[].controller.project').transform(ClusterConfig)
+
+IMAGEPROJECT = ControllerProject
+
+ZONE         = jq('.[].controller.zone').transform(ClusterConfig)
+REGION       = jq('.[].controller.region').transform(ClusterConfig)
+
+MACHINE_TYPE = jq('.[].nodes."machine-type"').transform(Partition)
 CPU_PLATFORM = ''
-PREEMPTIBLE  = False
+PREEMPTIBLE  = jq('.[].nodes.preemptible').transform(Partition)
 EXTERNAL_IP  = False
 SHARED_VPC_HOST_PROJ = "pennbrain-host-3097383fff"
 VPC_SUBNET   = "holder-subnet"
@@ -46,7 +63,7 @@ VPC_SUBNET   = "holder-subnet"
 DISK_SIZE_GB = '10'
 DISK_TYPE    = 'pd-standard'
 
-LABELS       = {'billing-project': 'holder_proj-a'}
+LABELS       = jq('.[].nodes.labels').transform(Partition)
 
 NETWORK_TYPE = 'subnetwork'
 NETWORK      = "projects/{}/regions/{}/subnetworks/{}-slurm-subnet".format(PROJECT, REGION, CLUSTER_NAME)

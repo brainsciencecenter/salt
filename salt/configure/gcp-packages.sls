@@ -12,6 +12,7 @@ gcp-packages:
       - checkinstall
       - colord
       - csvkit
+      - docker
       - dnsutils
       - emacs
       - environment-modules
@@ -67,12 +68,13 @@ gcp-packages:
       - unzip
       - vim
       - wget
-      - x2goserver
       - x11-apps
       - xfce4
       - xfonts-100dpi
       - xfonts-75dpi
-      - yq
+
+yq:
+  snap.installed
 
 # pip3 installed flywheel-sdk globre tzlocal 
 # pip install flywheel-sdk
