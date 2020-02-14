@@ -26,7 +26,7 @@ else
 	CmdArgs+=( "--address=${ExternalIP}" )
 fi
 
-FQDN="${InstanceName}.pennbrain.upenn.edu"
+FQDN="${Group}.pennbrain.upenn.edu"
 MinionID="$FQDN"
 
 # --verbosity=none -q
