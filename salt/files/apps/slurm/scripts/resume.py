@@ -244,14 +244,10 @@ def create_instance(compute, project, zone, instance_type, instance_name,
         'value': shutdown_script
     })
 
-    cluster_config = open(
-        '/apps/slurm/scripts/cluster.yaml', 'r').read()
     config['metadata']['items'].append({
-        'key': 'Cluster_YAML',
-        'value': cluster_config
+        'key': 'ClusterConfig',
+        'value': json.dumps(ClusterConfig, indent=2)
     })
-
-    
 
     if not have_compute_img:
         startup_script = open(

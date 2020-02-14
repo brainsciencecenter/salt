@@ -6,7 +6,7 @@ function getMetadata {
 	curl -s -H "Metadata-Flavor:Google" "http://metadata.google.internal/computeMetadata/v1/instance/$1"
 }
 
-ClusterConfigJson=$(getMetadata attributes/Cluster_YAML | yq -jP r - )
+ClusterConfigJson=$(getMetadata attributes/ClusterConfig | yq -jP r - )
 
 echo "$ClusterConfigJson" | logger -t "$CmdName" -p daemon.info
 

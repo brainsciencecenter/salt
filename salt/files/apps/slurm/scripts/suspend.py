@@ -20,6 +20,7 @@
 import argparse
 import logging
 from jq import jq
+import json
 import re
 import shlex
 import subprocess
@@ -36,10 +37,15 @@ CLUSTERYAMLFILE = SLURMSCRIPTDIR + '/cluster.yaml'
 with open(CLUSTERYAMLFILE) as file:
     ClusterConfig = yaml.load(file, Loader=yaml.FullLoader)
 
+ControllerConfig = jq('.[].controller').transform(ClusterConfig)
+                      
 NODECLASS = re.sub("-?\d*$","",sys.argv[1])
-Partition = jq('.[].partitions[]|select(.[].nodes.name | test("^{}.*"))'.format(NODECLASS)).transform(ClusterConfig)
-PROJECT      = jq('.[].project').transform(Partition)
-ZONE         = jq('.[].controller.zone').transform(ClusterConfig)
+Partition = jq('.[].partitions[]|select(.nodes.name | test("^{}.*"))'.format(NODECLASS)).transform(ClusterConfig)
+print("NODECLASS = ", NODECLASS)
+print("Partition = ", json.dumps(Partition, indent=2))
+      
+PROJECT      = jq('.project').transform(Partition)
+ZONE         = jq('.zone').transform(ControllerConfig)
 SCRIPTSPATH  = '/apps/slurm/scripts'
 SCONTROL     = '/apps/slurm/current/bin/scontrol'
 LOGFILE      = '/apps/slurm/log/suspend.log'
