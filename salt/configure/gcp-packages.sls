@@ -76,6 +76,14 @@ gcp-packages:
 yq:
   snap.installed
 
-# pip3 installed flywheel-sdk globre tzlocal 
+{% set Pip3Packages = [  'flywheel-sdk', 'jq', 'globre', 'tzlocal' ] %}
+
+{% for pip3pkg in Pip3Packages %}
+{{ pip3pkg }}:
+  pip.installed:
+    - name: {{ pip3pkg }}
+    - bin_env: /usr/bin/pip3
+{% endfor %} 
+# pip3 installed
 # pip install flywheel-sdk
 # fw command unzipped from wget https://storage.googleapis.com/flywheel-dist/cli/10.3.1/fw-linux_amd64.zip
