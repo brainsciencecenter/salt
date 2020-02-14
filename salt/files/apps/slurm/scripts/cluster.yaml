@@ -25,39 +25,66 @@ holder-cluster:
     zone: us-east1-b
     region: us-east1
     service-account: slurm-gcp@holder-dd34a9.iam.gserviceaccount.com
-    external-ip: 35.231.194.165
+    ExternalIP: 35.231.194.165
     network: bsc-host-network
-    subnet: holder-dd3499-subnet
+    Subnet: holder-dd3499-subnet
+    SharedVPCHostProj: pennbrain-host-3097383fff
+    VPCSubnet: holder-subnet
+    NetworkType: subnet
+
     
   partitions:
-    debug:
+    default:
         nodes:
-          name: holder-cluster-compute[0-2]
-          image-source: "https://compute.googleapis.com/compute/v1/projects/holder-dd34a9/global/images/holder-cluster-compute-image"
-          machine-type: n1-standard-2
-          preemptible: True
-          tags:
-            - compute
-            - holder
-          labels:
-            billing-project: holder-dd34a9
-            secondlabel: labelvalue
+            name: DEFAULT
+            ExternalIP: False
+            Region: us-east1
+            Zone: us-east1-b
+            Preemptible: True
+            DiskSizeGB: 10
+            DiskType: pd-standard
+            MachineType: n1-standard-2
+            Labels:
+              key1: value1
+              key2: value2
+            Tags:
+              - tag1
+              - tag2
+            GPUType: 
+            GPUCount: 0
+
+    debug:
         project: holder-dd34a9
         default: True
+        nodes:
+            name: holder-cluster-compute[0-2]
+            image-source: "https://compute.googleapis.com/compute/v1/projects/holder-dd34a9/global/images/holder-cluster-compute-image"
+            DiskSizeGB: 10
+            DiskType: pd-standard
+            MachineType: n1-standard-2
+            Preemptible: True
+            Tags:
+              - compute
+              - holder
+            Labels:
+              billing-project: holder-dd34a9
+              secondlabel: labelvalue
 
     proj-a-n1-standard-2:
-        nodes:
-          name: proj-a-n1-standard-2-[00-02]
-          image-source: https://compute.googleapis.com/compute/v1/projects/holder-dd34a9/global/images/holder-cluster-compute-image
-          machine-type: n1-standard-2
-          tags:
-            - compute
-            - holder
-          preemptible: True
-          labels:
-            billing-project: holder-proj-a
-            secondlabel: labelvalue
         project: holder-proj-a
+        nodes:
+            name: proj-a-n1-standard-2-[00-02]
+            image-source: https://compute.googleapis.com/compute/v1/projects/holder-dd34a9/global/images/holder-cluster-compute-image
+            DiskSizeGB: 10
+            DiskType: pd-standard
+            MachineType: n1-standard-2
+            Preemptible: True
+            Tags:
+              - compute
+              - holder
+            Labels:
+              billing-project: holder-proj-a
+              secondlabel: labelvalue
     
     big-proj-a:
         nodes: 

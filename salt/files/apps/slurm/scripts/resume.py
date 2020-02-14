@@ -48,28 +48,9 @@ def getMetadata(key):
         resp = urllib.request.urlopen(req)
         return(resp.read().decode("utf-8"))
     except (urllib.error.HTTPError, Exception) as e:
-        logging.exception("Error : looking for '{}' in metadata failed".format(key))
+        #logging.exception("Error : looking for '{}' in metadata failed".format(key))
+        logging.warning("Error : looking for '{}' in metadata failed".format(key))
         return(None)
-
-SlurmDir = getMetadata('attributes/SlurmDir')
-if (not SlurmDir):
-    SlurmDir    = '/apps/slurm'
-
-if (debug):
-    print("SlurmDir = ", SlurmDir)
-
-SLURMSCRIPTDIR  = SlurmDir + '/scripts'
-CLUSTERYAMLFILE = SLURMSCRIPTDIR + '/cluster.yaml'
-
-ClusterConfig = getMetadata('attributes/ClusterConfig')
-if (not ClusterConfig):
-    with open(CLUSTERYAMLFILE) as file:
-         ClusterConfig = yaml.load(file, Loader=yaml.FullLoader)
-
-if (debug):
-    print("ClusterConfig = ", json.dumps(ClusterConfig, indent=2))
-
-CLUSTER_NAME = jq('keys|.[0]').transform(ClusterConfig)
 
 def getNodePartition(NodeName, ClusterConfig):
     NodeClass = re.sub("-?\d*$","", NodeName)
@@ -78,6 +59,24 @@ def getNodePartition(NodeName, ClusterConfig):
 
 def getControllerConfig(ClusterConfig):
     return(jq('.[].controller').transform(ClusterConfig))
+
+SlurmDir = getMetadata('attributes/SlurmDir')
+if (not SlurmDir):
+    SlurmDir    = '/apps/slurm'
+
+if (debug):
+    print("SlurmDir = ", SlurmDir)
+
+ClusterConfig = getMetadata('attributes/ClusterConfig')
+if (not ClusterConfig):
+    ClusterYAMLFile = SlurmDir + '/scripts/cluster.yaml'
+    with open(ClusterYAMLFile) as file:
+         ClusterConfig = yaml.load(file, Loader=yaml.FullLoader)
+
+if (debug):
+    print("ClusterConfig = ", json.dumps(ClusterConfig, indent=2))
+
+CLUSTER_NAME = jq('keys|.[0]').transform(ClusterConfig)
 
 Partition = getNodePartition(sys.argv[1],ClusterConfig)
 if (debug):
@@ -105,34 +104,65 @@ REGION       = jq('.region').transform(ControllerConfig)
 if (debug):
     print("REGION = ", REGION)
     
-MACHINE_TYPE = jq('.nodes."machine-type"').transform(Partition)
+MACHINE_TYPE = jq('.nodes."MachineType"').transform(Partition)
 if (debug):
     print("MACHINE_TYPE = ", MACHINE_TYPE)
     
 CPU_PLATFORM = ''
-PREEMPTIBLE  = jq('.nodes.preemptible').transform(Partition)
+PREEMPTIBLE  = jq('.nodes.Preemptible').transform(Partition)
 if (debug):
     print("PREEMPTIBLE = ", PREEMPTIBLE)
     
 EXTERNAL_IP  = False
+EXTERNAL_IP  = jq('.nodes.ExternalIP').transform(Partition)
+if (debug):
+    print("EXTERNAL_IP = ", EXTERNAL_IP)
+    
 SHARED_VPC_HOST_PROJ = "pennbrain-host-3097383fff"
+SHARED_VPC_HOST_PROJ = jq('.SharedVPCHostProj').transform(ControllerConfig)
+if (debug):
+    print("SHARED_VPC_HOST_PROJ = ", SHARED_VPC_HOST_PROJ)
+    
 VPC_SUBNET   = "holder-subnet"
+VPC_SUBNET   = jq('.VPCSubnet').transform(ControllerConfig)
+if (debug):
+    print("VPC_SUBNET = ", VPC_SUBNET)
 
 DISK_SIZE_GB = '10'
+DISK_SIZE_GB = jq('.nodes.DiskSizeGB').transform(Partition)
+if (debug):
+    print("DISK_SIZE_GB = ", DISK_SIZE_GB)
+    
 DISK_TYPE    = 'pd-standard'
+DISK_TYPE    = jq('.nodes.DiskType').transform(Partition)
+if (debug):
+    print("DISK_TYPE = ", DISK_TYPE)
 
-LABELS       = jq('.nodes.labels').transform(Partition)
+LABELS       = jq('.nodes.Labels').transform(Partition)
 if (debug):
     print("LABELS = ", LABELS)
 
 NETWORK_TYPE = 'subnetwork'
+NETWORK_TYPE = jq('.NetworkType').transform(ControllerConfig)
+if (debug):
+    print("NETWORK_TYPE = ", NETWORK_TYPE)
+    
+# node's project or shared vpc project
 NETWORK      = "projects/{}/regions/{}/subnetworks/{}-slurm-subnet".format(PROJECT, REGION, CLUSTER_NAME)
-#NETWORK      = "projects/{}/regions/{}/subnetworks/{}-slurm-subnet".format(SHARED_VPC_HOST_PROJ, REGION, CLUSTER_NAME)bsc-host-network 
-GPU_TYPE     = ''
-GPU_COUNT    = '0'
 
-SCONTROL     = '/apps/slurm/current/bin/scontrol'
-LOGFILE      = '/apps/slurm/log/resume.log'
+GPU_TYPE     = ''
+GPU_TYPE     = jq('.GPUType').transform(Partition)
+if (debug):
+    print("GPU_TYPE = ", GPU_TYPE)
+
+GPU_COUNT    = '0'
+GPU_COUNT    = jq('.GPUCount').transform(Partition)
+if (debug):
+    print("GPU_COUNT = ", GPU_COUNT)
+
+
+SCONTROL     = SlurmDir + '/current/bin/scontrol'
+LOGFILE      = SlurmDir + '/log/resume.log'
 
 TOT_REQ_CNT = 1000
 
