@@ -49,7 +49,7 @@ def getMetadata(key):
         return(resp.read().decode("utf-8"))
     except (urllib.error.HTTPError, Exception) as e:
         #logging.exception("Error : looking for '{}' in metadata failed".format(key))
-        logging.warning("Error : looking for '{}' in metadata failed".format(key))
+        logging.info("Error : looking for '{}' in metadata failed".format(key))
         return(None)
 
 def getNodePartition(NodeName, ClusterConfig):
@@ -64,42 +64,27 @@ SlurmDir = getMetadata('attributes/SlurmDir')
 if (not SlurmDir):
     SlurmDir    = '/apps/slurm'
 
-if (debug):
-    print("SlurmDir = ", SlurmDir)
-
 ClusterConfig = getMetadata('attributes/ClusterConfig')
 if (not ClusterConfig):
     ClusterYAMLFile = SlurmDir + '/scripts/cluster.yaml'
     with open(ClusterYAMLFile) as file:
          ClusterConfig = yaml.load(file, Loader=yaml.FullLoader)
 
-if (debug):
-    print("ClusterConfig = ", json.dumps(ClusterConfig, indent=2))
+ControllerConfig = jq('.[].controller').transform(ClusterConfig)
 
 CLUSTER_NAME = jq('keys|.[0]').transform(ClusterConfig)
 
-Partition = getNodePartition(sys.argv[1],ClusterConfig)
-if (debug):
-    print("Partition = ", json.dumps(Partition, indent=2))
-    
 ControllerConfig = getControllerConfig(ClusterConfig)
 if (debug):
     print("ControllerConfig = ", json.dumps(ControllerConfig, indent=2))
-
-PROJECT = jq('.project').transform(Partition)
-if (debug):
-    print("PROJECT = ", PROJECT)
 
 ControllerProject = jq('.project').transform(ControllerConfig)
 if (debug):
     print("ControllerProject = ", ControllerProject)
     
 IMAGEPROJECT = ControllerProject
+PROJECT = None
 
-ZONE         = jq('.zone').transform(ControllerConfig)
-if (debug):
-    print("ZONE = ", ZONE)
-    
 REGION       = jq('.region').transform(ControllerConfig)
 if (debug):
     print("REGION = ", REGION)
@@ -108,57 +93,10 @@ MACHINE_TYPE = jq('.nodes."MachineType"').transform(Partition)
 if (debug):
     print("MACHINE_TYPE = ", MACHINE_TYPE)
     
-CPU_PLATFORM = ''
-PREEMPTIBLE  = jq('.nodes.Preemptible').transform(Partition)
-if (debug):
-    print("PREEMPTIBLE = ", PREEMPTIBLE)
-    
-EXTERNAL_IP  = False
-EXTERNAL_IP  = jq('.nodes.ExternalIP').transform(Partition)
-if (debug):
-    print("EXTERNAL_IP = ", EXTERNAL_IP)
-    
-SHARED_VPC_HOST_PROJ = "pennbrain-host-3097383fff"
-SHARED_VPC_HOST_PROJ = jq('.SharedVPCHostProj').transform(ControllerConfig)
-if (debug):
-    print("SHARED_VPC_HOST_PROJ = ", SHARED_VPC_HOST_PROJ)
-    
-VPC_SUBNET   = "holder-subnet"
-VPC_SUBNET   = jq('.VPCSubnet').transform(ControllerConfig)
-if (debug):
-    print("VPC_SUBNET = ", VPC_SUBNET)
-
-DISK_SIZE_GB = '10'
-DISK_SIZE_GB = jq('.nodes.DiskSizeGB').transform(Partition)
-if (debug):
-    print("DISK_SIZE_GB = ", DISK_SIZE_GB)
-    
-DISK_TYPE    = 'pd-standard'
-DISK_TYPE    = jq('.nodes.DiskType').transform(Partition)
-if (debug):
-    print("DISK_TYPE = ", DISK_TYPE)
-
-LABELS       = jq('.nodes.Labels').transform(Partition)
-if (debug):
-    print("LABELS = ", LABELS)
-
-NETWORK_TYPE = 'subnetwork'
-NETWORK_TYPE = jq('.NetworkType').transform(ControllerConfig)
-if (debug):
-    print("NETWORK_TYPE = ", NETWORK_TYPE)
     
 # node's project or shared vpc project
 NETWORK      = "projects/{}/regions/{}/subnetworks/{}-slurm-subnet".format(PROJECT, REGION, CLUSTER_NAME)
-
-GPU_TYPE     = ''
-GPU_TYPE     = jq('.GPUType').transform(Partition)
-if (debug):
-    print("GPU_TYPE = ", GPU_TYPE)
-
-GPU_COUNT    = '0'
-GPU_COUNT    = jq('.GPUCount').transform(Partition)
-if (debug):
-    print("GPU_COUNT = ", GPU_COUNT)
+NETWORK      = jq('.nodes.NetworkPath').transform(Partition)
 
 
 SCONTROL     = SlurmDir + '/current/bin/scontrol'
@@ -198,6 +136,13 @@ def wait_for_operation(compute, project, zone, operation):
 
 # [START update_slurm_node_addrs]
 def update_slurm_node_addrs(compute):
+    global ClusterConfig
+    global ControllerConfig
+    global Partition
+
+    ZONE         = jq('.zone').transform(ControllerConfig)
+    PROJECT = jq('.project').transform(Partition)
+
     for node_name in operations:
         try:
             operation = operations[node_name]
@@ -224,11 +169,22 @@ def update_slurm_node_addrs(compute):
 
 # [START create_instance]
 def create_instance(compute, project, zone, instance_type, instance_name,
-                    source_disk_image, have_compute_img):
+                    source_disk_image, have_compute_img, disk_type, disk_size):
+
+    global ClusterConfig
+    global ControllerConfig
+    global PartitionConfig
+
+    global PROJECT
+
     # Configure the machine
     machine_type = "zones/{}/machineTypes/{}".format(zone, instance_type)
-    disk_type = "projects/{}/zones/{}/diskTypes/{}".format(PROJECT, ZONE,
-                                                           DISK_TYPE)
+    disk_path = "projects/{}/zones/{}/diskTypes/{}".format(project, zone,
+                                                           disk_type)
+
+    NETWORK_TYPE = 'subnetwork'
+    NETWORK_TYPE = jq('.NetworkType').transform(ControllerConfig)
+
     config = {
         'name': instance_name,
         'machineType': machine_type,
@@ -239,8 +195,8 @@ def create_instance(compute, project, zone, instance_type, instance_name,
             'autoDelete': True,
             'initializeParams': {
                 'sourceImage': source_disk_image,
-                'diskType': disk_type,
-                'diskSizeGb': DISK_SIZE_GB
+                'diskType': disk_path,
+                'diskSizeGb': disk_size
             }
         }],
 
@@ -257,7 +213,7 @@ def create_instance(compute, project, zone, instance_type, instance_name,
             ]
         }],
 
-        'tags': {'items': ['compute', 'holder'] },
+        'tags': { 'items': jq('.nodes.Tags').transform(Partition)} ,
 
         'metadata': {
             'items': [{
@@ -281,16 +237,22 @@ def create_instance(compute, project, zone, instance_type, instance_name,
 
     if not have_compute_img:
         startup_script = open(
-            '/apps/slurm/scripts/startup-script.py', 'r').read()
+            SlurmDir + '/scripts/startup-script.py', 'r').read()
         config['metadata']['items'].append({
             'key': 'startup-script',
             'value': startup_script
         })
 
+    GPU_TYPE     = ''
+    GPU_TYPE     = jq('.GPUType').transform(Partition)
+
+    GPU_COUNT    = '0'
+    GPU_COUNT    = jq('.GPUCount').transform(Partition)
+
     if GPU_TYPE:
         accel_type = ("https://www.googleapis.com/compute/v1/"
                       "projects/{}/zones/{}/acceleratorTypes/{}".format(
-                          PROJECT, ZONE, GPU_TYPE))
+                          project, zone, GPU_TYPE))
         config['guestAccelerators'] = [{
             'acceleratorCount': GPU_COUNT,
             'acceleratorType' : accel_type
@@ -298,6 +260,7 @@ def create_instance(compute, project, zone, instance_type, instance_name,
 
         config['scheduling'] = {'onHostMaintenance': 'TERMINATE'}
 
+    PREEMPTIBLE  = jq('.nodes.Preemptible').transform(Partition)
     if PREEMPTIBLE:
         config['scheduling'] = {
             "preemptible": True,
@@ -305,11 +268,20 @@ def create_instance(compute, project, zone, instance_type, instance_name,
             "automaticRestart": False
         },
 
+    LABELS       = jq('.nodes.Labels').transform(Partition)
     if LABELS:
         config['labels'] = LABELS,
 
+    CPU_PLATFORM = ''
+    CPU_PLATFORM = jq('.nodes.CPUPlatform').transform(Partition)
     if CPU_PLATFORM:
         config['minCpuPlatform'] = CPU_PLATFORM,
+
+    SHARED_VPC_HOST_PROJ = "pennbrain-host-3097383fff"
+    SHARED_VPC_HOST_PROJ = jq('.SharedVPCHostProj').transform(ControllerConfig)
+    
+    VPC_SUBNET   = "holder-subnet"
+    VPC_SUBNET   = jq('.VPCSubnet').transform(ControllerConfig)
 
     if VPC_SUBNET:
         net_type = "projects/{}/regions/{}/subnetworks/{}".format(
@@ -325,10 +297,14 @@ def create_instance(compute, project, zone, instance_type, instance_name,
             NETWORK_TYPE : net_type
         }]
 
+    EXTERNAL_IP  = False
+    EXTERNAL_IP  = jq('.nodes.ExternalIP').transform(Partition)
     if EXTERNAL_IP:
         config['networkInterfaces'][0]['accessConfigs'] = [
             {'type': 'ONE_TO_ONE_NAT', 'name': 'External NAT'}
         ]
+
+    print("Config = ", json.dumps(config, indent=2))
 
     return compute.instances().insert(
         project=project,
@@ -364,10 +340,22 @@ def add_instances(compute, source_disk_image, have_compute_img, node_list):
                 curr_batch,
                 compute.new_batch_http_request(callback=added_instances_cb))
 
+        Partition = getNodePartition(node_name,ClusterConfig)
+
+        PROJECT = jq('.project').transform(Partition)
+
+        DISK_SIZE_GB = '10'
+        DISK_SIZE_GB = jq('.nodes.DiskSizeGB').transform(Partition)
+
+        DISK_TYPE    = 'pd-standard'
+        DISK_TYPE    = jq('.nodes.DiskType').transform(Partition)
+
+        ZONE         = jq('.zone').transform(ControllerConfig)
+
         batch_list[curr_batch].add(
             create_instance(
                 compute, PROJECT, ZONE, MACHINE_TYPE, node_name,
-                source_disk_image, have_compute_img),
+                source_disk_image, have_compute_img, DISK_TYPE, DISK_SIZE_GB),
             request_id=node_name)
         req_cnt += 1
 

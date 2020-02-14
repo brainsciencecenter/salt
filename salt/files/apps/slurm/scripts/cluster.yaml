@@ -30,7 +30,7 @@ holder-cluster:
     Subnet: holder-dd3499-subnet
     SharedVPCHostProj: pennbrain-host-3097383fff
     VPCSubnet: holder-subnet
-    NetworkType: subnet
+    NetworkType: subnetwork
 
     
   partitions:
@@ -63,6 +63,7 @@ holder-cluster:
             DiskType: pd-standard
             MachineType: n1-standard-2
             Preemptible: True
+            NetworkPath: projects/pennbrain-host-3097383fff/global/networks/bsc-host-network
             Tags:
               - compute
               - holder
@@ -78,6 +79,7 @@ holder-cluster:
             DiskSizeGB: 10
             DiskType: pd-standard
             MachineType: n1-standard-2
+            NetworkPath: projects/pennbrain-host-3097383fff/global/networks/bsc-host-network
             Preemptible: True
             Tags:
               - compute
