@@ -1,0 +1,5 @@
+getGCPAutoSnapshot:
+  cmd.run:
+    - name: (cd /usr/local/bin; wget https://gitlab.com/alan8/google-cloud-auto-snapshot/raw/master/google-cloud-auto-snapshot.sh)
+  cmd.run:
+    - name: chmod +x /usr/local/bin/google-cloud-auto-snapshot.sh

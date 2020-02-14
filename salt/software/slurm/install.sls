@@ -47,6 +47,14 @@ InstallSlurm:
     - unless:
         test -e {{ SlurmRootDir }}
 
+{{ SlurmScriptDir }}/cluster.yaml:
+  file.managed:
+    - source: salt://files{{ SlurmScriptDir }}/cluster.yaml
+    - user: root
+    - group: root
+    - mode: 644
+    - makedirs: True
+
 #slurm-link:
 #  cmd.run:
 #    - name: ln -s {{ SlurmRootDir }} {{ SlurmCurrent }}

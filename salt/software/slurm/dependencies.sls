@@ -38,6 +38,7 @@ slurm_dependancies:
       - tmux
       - pdsh
       - openmpi-bin
+      - x2goserver
       - libopenmpi-dev
 fpm:
   cmd.run:

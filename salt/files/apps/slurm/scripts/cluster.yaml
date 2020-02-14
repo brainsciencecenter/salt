@@ -1,3 +1,9 @@
+#
+# tags, image-source, nfs mounts all have dashes
+# labels do not
+# Nothing else should have dashes
+# 
+
 holder-cluster:
   controller:
     hostname: holder-cluster-controller
@@ -24,7 +30,7 @@ holder-cluster:
     subnet: holder-dd3499-subnet
     
   partitions:
-    - debug:
+    debug:
         nodes:
           name: holder-cluster-compute[0-2]
           image-source: "https://compute.googleapis.com/compute/v1/projects/holder-dd34a9/global/images/holder-cluster-compute-image"
@@ -39,7 +45,7 @@ holder-cluster:
         project: holder-dd34a9
         default: True
 
-    - proj-a-n1-standard-2:
+    proj-a-n1-standard-2:
         nodes:
           name: proj-a-n1-standard-2-[00-02]
           image-source: https://compute.googleapis.com/compute/v1/projects/holder-dd34a9/global/images/holder-cluster-compute-image
@@ -53,7 +59,7 @@ holder-cluster:
             secondlabel: labelvalue
         project: holder-proj-a
     
-    - big-proj-a:
+    big-proj-a:
         nodes: 
           name: n1-highmem-16-[00-09]
           image-source: https://compute.googleapis.com/compute/v1/projects/holder-dd34a9/global/images/holder-cluster-compute-image
@@ -66,7 +72,7 @@ holder-cluster:
         labels:
           billing-project: holder-proj-a
     
-    - gpu-proj-a:
+    gpu-proj-a:
         nodes: 
           name: gpu-[00-09]
           image-source: https://compute.googleapis.com/compute/v1/projects/holder-dd34a9/global/images/holder-cluster-compute-image

@@ -166,10 +166,11 @@ ResumeRate=0
 #SuspendExcNodes=
 #SuspendExcParts=
 SuspendRate=0
-SuspendTime=300
+#SuspendTime=300
+SuspendTime=120
 #
 SchedulerParameters=salloc_wait_nodes
-#SlurmctldParameters=cloud_dns,idle_on_node_suspend
+SlurmctldParameters=cloud_dns,idle_on_node_suspend
 SlurmctldParameters=idle_on_node_suspend
 CommunicationParameters=NoAddrCache
 #

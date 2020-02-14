@@ -27,6 +27,8 @@ import shlex
 import subprocess
 import sys
 import time
+import urllib.request, urllib.parse, urllib.error
+
 import yaml
 
 import googleapiclient.discovery
@@ -34,28 +36,84 @@ from google.auth import compute_engine
 import google_auth_httplib2
 from googleapiclient.http import set_user_agent
 
-SLURMDIR    = '/apps/slurm'
-SLURMSCRIPTDIR  = SLURMDIR + '/scripts'
+debug = False
+debug = True
+
+def getMetadata(key):
+    METADATA_URL = "http://metadata.google.internal/computeMetadata/v1/instance"
+
+    req = urllib.request.Request("{}/{}".format(METADATA_URL, key))
+    req.add_header('Metadata-Flavor', 'Google')
+    try:
+        resp = urllib.request.urlopen(req)
+        return(resp.read().decode("utf-8"))
+    except (urllib.error.HTTPError, Exception) as e:
+        logging.exception("Error : looking for '{}' in metadata failed".format(key))
+        return(None)
+
+SlurmDir = getMetadata('attributes/SlurmDir')
+if (not SlurmDir):
+    SlurmDir    = '/apps/slurm'
+
+if (debug):
+    print("SlurmDir = ", SlurmDir)
+
+SLURMSCRIPTDIR  = SlurmDir + '/scripts'
 CLUSTERYAMLFILE = SLURMSCRIPTDIR + '/cluster.yaml'
 
-with open(CLUSTERYAMLFILE) as file:
-    ClusterConfig = yaml.load(file, Loader=yaml.FullLoader)
+ClusterConfig = getMetadata('attributes/ClusterConfig')
+if (not ClusterConfig):
+    with open(CLUSTERYAMLFILE) as file:
+         ClusterConfig = yaml.load(file, Loader=yaml.FullLoader)
 
-CLUSTER_NAME = 'holder-cluster'
+if (debug):
+    print("ClusterConfig = ", json.dumps(ClusterConfig, indent=2))
+
 CLUSTER_NAME = jq('keys|.[0]').transform(ClusterConfig)
-NODECLASS = re.sub("-?\d*$","",sys.argv[1])
-Partition = jq('.[].partitions[]|select(.[].nodes.name | test("^{}.*"))'.format(NODECLASS)).transform(ClusterConfig)
-PROJECT      = jq('.[].project').transform(Partition)
-ControllerProject = jq('.[].controller.project').transform(ClusterConfig)
 
+def getNodePartition(NodeName, ClusterConfig):
+    NodeClass = re.sub("-?\d*$","", NodeName)
+    Partition = jq('.[].partitions[]|select(.nodes.name | test("^{}.*"))'.format(NodeClass)).transform(ClusterConfig)
+    return(Partition)
+
+def getControllerConfig(ClusterConfig):
+    return(jq('.[].controller').transform(ClusterConfig))
+
+Partition = getNodePartition(sys.argv[1],ClusterConfig)
+if (debug):
+    print("Partition = ", json.dumps(Partition, indent=2))
+    
+ControllerConfig = getControllerConfig(ClusterConfig)
+if (debug):
+    print("ControllerConfig = ", json.dumps(ControllerConfig, indent=2))
+
+PROJECT = jq('.project').transform(Partition)
+if (debug):
+    print("PROJECT = ", PROJECT)
+
+ControllerProject = jq('.project').transform(ControllerConfig)
+if (debug):
+    print("ControllerProject = ", ControllerProject)
+    
 IMAGEPROJECT = ControllerProject
 
-ZONE         = jq('.[].controller.zone').transform(ClusterConfig)
-REGION       = jq('.[].controller.region').transform(ClusterConfig)
-
-MACHINE_TYPE = jq('.[].nodes."machine-type"').transform(Partition)
+ZONE         = jq('.zone').transform(ControllerConfig)
+if (debug):
+    print("ZONE = ", ZONE)
+    
+REGION       = jq('.region').transform(ControllerConfig)
+if (debug):
+    print("REGION = ", REGION)
+    
+MACHINE_TYPE = jq('.nodes."machine-type"').transform(Partition)
+if (debug):
+    print("MACHINE_TYPE = ", MACHINE_TYPE)
+    
 CPU_PLATFORM = ''
-PREEMPTIBLE  = jq('.[].nodes.preemptible').transform(Partition)
+PREEMPTIBLE  = jq('.nodes.preemptible').transform(Partition)
+if (debug):
+    print("PREEMPTIBLE = ", PREEMPTIBLE)
+    
 EXTERNAL_IP  = False
 SHARED_VPC_HOST_PROJ = "pennbrain-host-3097383fff"
 VPC_SUBNET   = "holder-subnet"
@@ -63,7 +121,9 @@ VPC_SUBNET   = "holder-subnet"
 DISK_SIZE_GB = '10'
 DISK_TYPE    = 'pd-standard'
 
-LABELS       = jq('.[].nodes.labels').transform(Partition)
+LABELS       = jq('.nodes.labels').transform(Partition)
+if (debug):
+    print("LABELS = ", LABELS)
 
 NETWORK_TYPE = 'subnetwork'
 NETWORK      = "projects/{}/regions/{}/subnetworks/{}-slurm-subnet".format(PROJECT, REGION, CLUSTER_NAME)
