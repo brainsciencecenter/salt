@@ -39,6 +39,11 @@ from googleapiclient.http import set_user_agent
 debug = False
 debug = True
 
+#
+# *** ubuntu is hardcoded in main
+#
+
+
 def getMetadata(key):
     METADATA_URL = "http://metadata.google.internal/computeMetadata/v1/instance"
 
@@ -78,34 +83,19 @@ ControllerConfig = getControllerConfig(ClusterConfig)
 if (debug):
     print("ControllerConfig = ", json.dumps(ControllerConfig, indent=2))
 
-ControllerProject = jq('.project').transform(ControllerConfig)
-if (debug):
-    print("ControllerProject = ", ControllerProject)
-    
-IMAGEPROJECT = ControllerProject
-PROJECT = None
-
 REGION       = jq('.region').transform(ControllerConfig)
-if (debug):
-    print("REGION = ", REGION)
-    
-MACHINE_TYPE = jq('.nodes."MachineType"').transform(Partition)
-if (debug):
-    print("MACHINE_TYPE = ", MACHINE_TYPE)
-    
-    
-# node's project or shared vpc project
-NETWORK      = "projects/{}/regions/{}/subnetworks/{}-slurm-subnet".format(PROJECT, REGION, CLUSTER_NAME)
-NETWORK      = jq('.nodes.NetworkPath').transform(Partition)
 
+# Set to True if the nodes aren't accessible by dns.
+UPDATE_NODE_ADDRS = True
+UPDATE_NODE_ADDRS = jq('.UpdateNodeAddresses').transform(ControllerConfig)
 
+PROJECT = None
+Partition = None
+    
 SCONTROL     = SlurmDir + '/current/bin/scontrol'
 LOGFILE      = SlurmDir + '/log/resume.log'
 
 TOT_REQ_CNT = 1000
-
-# Set to True if the nodes aren't accessible by dns.
-UPDATE_NODE_ADDRS = True
 
 instances = {}
 operations = {}
@@ -139,6 +129,7 @@ def update_slurm_node_addrs(compute):
     global ClusterConfig
     global ControllerConfig
     global Partition
+    global operations
 
     ZONE         = jq('.zone').transform(ControllerConfig)
     PROJECT = jq('.project').transform(Partition)
@@ -171,6 +162,7 @@ def update_slurm_node_addrs(compute):
 def create_instance(compute, project, zone, instance_type, instance_name,
                     source_disk_image, have_compute_img, disk_type, disk_size):
 
+    global SlurmDir
     global ClusterConfig
     global ControllerConfig
     global PartitionConfig
@@ -184,6 +176,11 @@ def create_instance(compute, project, zone, instance_type, instance_name,
 
     NETWORK_TYPE = 'subnetwork'
     NETWORK_TYPE = jq('.NetworkType').transform(ControllerConfig)
+
+    # node's project or shared vpc project
+    NETWORK      = "projects/{}/regions/{}/subnetworks/{}-slurm-subnet".format(PROJECT, REGION, CLUSTER_NAME)
+    NETWORK      = jq('.nodes.NetworkPath').transform(Partition)
+
 
     config = {
         'name': instance_name,
@@ -224,7 +221,7 @@ def create_instance(compute, project, zone, instance_type, instance_name,
     }
 
     shutdown_script = open(
-        '/apps/slurm/scripts/compute-shutdown', 'r').read()
+        SlurmDir + '/scripts/compute-shutdown', 'r').read()
     config['metadata']['items'].append({
         'key': 'shutdown-script',
         'value': shutdown_script
@@ -304,8 +301,6 @@ def create_instance(compute, project, zone, instance_type, instance_name,
             {'type': 'ONE_TO_ONE_NAT', 'name': 'External NAT'}
         ]
 
-    print("Config = ", json.dumps(config, indent=2))
-
     return compute.instances().insert(
         project=project,
         zone=zone,
@@ -326,11 +321,19 @@ def added_instances_cb(request_id, response, exception):
 # [start add_instances]
 def add_instances(compute, source_disk_image, have_compute_img, node_list):
 
+    global ControllerConfig
+    global Partition
+
+    global TOT_REQ_CNT
+
     batch_list = []
     curr_batch = 0
     req_cnt = 0
     batch_list.insert(
         curr_batch, compute.new_batch_http_request(callback=added_instances_cb))
+
+    ZONE         = jq('.zone').transform(ControllerConfig)
+    UPDATE_NODE_ADDRS = jq('.UpdateNodeAddresses').transform(ControllerConfig)
 
     for node_name in node_list:
         if req_cnt >= TOT_REQ_CNT:
@@ -350,7 +353,7 @@ def add_instances(compute, source_disk_image, have_compute_img, node_list):
         DISK_TYPE    = 'pd-standard'
         DISK_TYPE    = jq('.nodes.DiskType').transform(Partition)
 
-        ZONE         = jq('.zone').transform(ControllerConfig)
+        MACHINE_TYPE = jq('.nodes."MachineType"').transform(Partition)
 
         batch_list[curr_batch].add(
             create_instance(
@@ -374,6 +377,12 @@ def add_instances(compute, source_disk_image, have_compute_img, node_list):
 
 # [START main]
 def main(arg_nodes):
+    global ControllerConfig
+    global Partition
+
+    global SCONTROL
+    global CLUSTER_NAME
+
     logging.debug("Bursting out:" + arg_nodes)
     compute = googleapiclient.discovery.build('compute', 'v1',
                                               http=authorized_http,
@@ -385,7 +394,19 @@ def main(arg_nodes):
     node_list = nodes_str.splitlines()
 
     have_compute_img = False
+
+    #
+    # *** The image project is probably not going to be the same as
+    # the controller -- image should be part of admin, or bsc
+    #
+    ControllerProject = jq('.project').transform(ControllerConfig)
+    IMAGEPROJECT = ControllerProject
+
     try:
+        #
+        # *** This assumes the images are in the form ClusterName-compute-image
+        # Need to change to have a central image pool
+        #
         image_response = compute.images().getFromFamily(
             project = IMAGEPROJECT,
             family = CLUSTER_NAME + "-compute-image").execute()
@@ -428,6 +449,6 @@ if __name__ == '__main__':
     logging.basicConfig(
         filename=LOGFILE,
         format='%(asctime)s %(name)s %(levelname)s: %(message)s',
-        level=logging.DEBUG)
+        Level=logging.DEBUG)
 
     main(args.nodes)

@@ -31,12 +31,15 @@ holder-cluster:
     SharedVPCHostProj: pennbrain-host-3097383fff
     VPCSubnet: holder-subnet
     NetworkType: subnetwork
+    UpdateNodeAddresses: True
 
     
   partitions:
     default:
         nodes:
             name: DEFAULT
+            ImageProject: holder-dd34a9
+            Family: holder-cluster-compute-image
             ExternalIP: False
             Region: us-east1
             Zone: us-east1-b
@@ -58,7 +61,9 @@ holder-cluster:
         default: True
         nodes:
             name: holder-cluster-compute[0-2]
-            image-source: "https://compute.googleapis.com/compute/v1/projects/holder-dd34a9/global/images/holder-cluster-compute-image"
+            image-source:
+              - https://compute.googleapis.com/compute/v1/projects/holder-dd34a9/global/images/holder-cluster-compute-image
+              - https://compute.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/ubuntu-1910
             DiskSizeGB: 10
             DiskType: pd-standard
             MachineType: n1-standard-2
@@ -75,7 +80,6 @@ holder-cluster:
         project: holder-proj-a
         nodes:
             name: proj-a-n1-standard-2-[00-02]
-            image-source: https://compute.googleapis.com/compute/v1/projects/holder-dd34a9/global/images/holder-cluster-compute-image
             DiskSizeGB: 10
             DiskType: pd-standard
             MachineType: n1-standard-2
@@ -91,7 +95,6 @@ holder-cluster:
     big-proj-a:
         nodes: 
           name: n1-highmem-16-[00-09]
-          image-source: https://compute.googleapis.com/compute/v1/projects/holder-dd34a9/global/images/holder-cluster-compute-image
           machine-type: n1-standard-2
           tags:
             - compute
@@ -104,7 +107,6 @@ holder-cluster:
     gpu-proj-a:
         nodes: 
           name: gpu-[00-09]
-          image-source: https://compute.googleapis.com/compute/v1/projects/holder-dd34a9/global/images/holder-cluster-compute-image
           machine-type: n1-standard-2
           tags:
             - compute
