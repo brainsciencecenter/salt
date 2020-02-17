@@ -5,6 +5,9 @@ base:
     - software
     - icinga-files
 
+  '*.pennbrain.upenn.edu':
+    - software/usergroups
+    
   'compute-*':
     - nodegroup.compute-nodes
 

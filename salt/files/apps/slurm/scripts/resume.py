@@ -85,10 +85,6 @@ if (debug):
 
 REGION       = jq('.region').transform(ControllerConfig)
 
-# Set to True if the nodes aren't accessible by dns.
-UPDATE_NODE_ADDRS = True
-UPDATE_NODE_ADDRS = jq('.UpdateNodeAddresses').transform(ControllerConfig)
-
 PROJECT = None
 Partition = None
     
@@ -167,18 +163,15 @@ def create_instance(compute, project, zone, instance_type, instance_name,
     global ControllerConfig
     global PartitionConfig
 
-    global PROJECT
-
     # Configure the machine
     machine_type = "zones/{}/machineTypes/{}".format(zone, instance_type)
     disk_path = "projects/{}/zones/{}/diskTypes/{}".format(project, zone,
                                                            disk_type)
-
     NETWORK_TYPE = 'subnetwork'
     NETWORK_TYPE = jq('.NetworkType').transform(ControllerConfig)
 
     # node's project or shared vpc project
-    NETWORK      = "projects/{}/regions/{}/subnetworks/{}-slurm-subnet".format(PROJECT, REGION, CLUSTER_NAME)
+    NETWORK      = "projects/{}/regions/{}/subnetworks/{}-slurm-subnet".format(project, REGION, CLUSTER_NAME)
     NETWORK      = jq('.nodes.NetworkPath').transform(Partition)
 
 
@@ -232,6 +225,13 @@ def create_instance(compute, project, zone, instance_type, instance_name,
         'value': json.dumps(ClusterConfig, indent=2)
     })
 
+    CloudInit = open(
+            SlurmDir + '/scripts/cloud-config.yaml', 'r').read()
+    config['metadata']['items'].append({
+        'key': 'user-data',
+        'value': CloudInit
+    })
+
     if not have_compute_img:
         startup_script = open(
             SlurmDir + '/scripts/startup-script.py', 'r').read()
@@ -282,7 +282,7 @@ def create_instance(compute, project, zone, instance_type, instance_name,
 
     if VPC_SUBNET:
         net_type = "projects/{}/regions/{}/subnetworks/{}".format(
-            PROJECT, REGION, VPC_SUBNET)
+            project, REGION, VPC_SUBNET)
         config['networkInterfaces'] = [{
             NETWORK_TYPE : net_type
         }]
@@ -332,7 +332,7 @@ def add_instances(compute, source_disk_image, have_compute_img, node_list):
     batch_list.insert(
         curr_batch, compute.new_batch_http_request(callback=added_instances_cb))
 
-    ZONE         = jq('.zone').transform(ControllerConfig)
+    ZONE = jq('.zone').transform(ControllerConfig)
     UPDATE_NODE_ADDRS = jq('.UpdateNodeAddresses').transform(ControllerConfig)
 
     for node_name in node_list:

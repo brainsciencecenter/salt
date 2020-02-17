@@ -1,0 +1,7 @@
+#cloud-config
+  groups:
+      - syslog
+      - munge
+      - docker: [ holder, srdas ]
+      - slurm
+		  
