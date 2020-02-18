@@ -35,12 +35,13 @@ holder-cluster:
 
     
   partitions:
-    default:
+    DEFAULT:
+        MaxTime: INFINITE
+        LLN: yes
+        State: UP
         nodes:
             name: DEFAULT
-            ImageProject: holder-dd34a9
-            Family: holder-cluster-compute-image
-            ExternalIP: False
+            State: CLOUD
             Region: us-east1
             Zone: us-east1-b
             Preemptible: True
@@ -122,7 +123,8 @@ holder-cluster:
 # AllowGroups
 # Can we change Sockets/CoresPerSocket/ThreadsPerCore to just CPU?
 #
-#NodeName=DEFAULT MaxTime=INFINITE State=CLOUD LLN=yes 
+#NodeName=DEFAULT State=CLOUD
+#PartitionName=DEFAULT MaxTime=INFINITE LLN=yes 
 #
 #GresTypes=gpu
 #
