@@ -1,0 +1,36 @@
+#!/bin/bash
+
+ClusterJson=$(yq -jP r - <  cluster.yaml)
+
+PartitionName=proj-a-n1-standard-2
+
+PartitionNames=$(echo "$ClusterJson" | jq -r '.[].partitions|keys|.[]')
+PartitionJson=$(echo "$ClusterJson" | jq -r '.[].partitions["'${PartitionName}'"]')
+
+NodeJson=$(echo "$PartitionJson" | jq -r '.nodes')
+
+PartitionSpec=()
+PartitionSpec+=( PartitionName=$PartitionName )
+PartitionSpec+=( Nodes=$(echo $NodeJson | jq -r '.name') ) 
+Default=$(echo "$PartitionJson" | jq -r '.Default')
+if (! echo "$Default" | grep -q null)
+then
+	PartitionSpec+=( Default=$Default )
+fi
+PartitionSpec+=( LLN=yes )
+
+echo "${PartitionSpec[@]}"
+
+MachineTypes=$(gcloud compute machine-types list --filter="zone: us-east1-b" --format=value"(NAME,CPUS,MEMORY_GB)")
+
+MachineType=n1-standard-2
+
+
+NodeSpec=()
+
+NodeSpec+=( NodeName=$(echo "$NodeJson" | jq -r '.name') )
+NodeSpec+=( CPUs=$(echo "$MachineTypes" | grep "^$MachineType" | awk '{print $2}') )
+NodeSpec+=( RealMemory=$((echo scale=0; (echo "$MachineTypes" | grep "^$MachineType" | awk '{print $3}' ; echo '* 1024 / 1') | paste -sd" \n") | bc ) )
+
+
+echo "${NodeSpec[@]}"
