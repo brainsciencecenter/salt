@@ -47,7 +47,7 @@ do
 		NodeSpec+=( CPUs=$(echo "$MachineTypes" | grep -P "^${MachineType}\s" | awk '{print $2}') )
 		NodeSpec+=( RealMemory=$((echo scale=0; (echo "$MachineTypes" | grep -P "^${MachineType}\s" | awk '{print $3}' ; echo '* 1024 / 1') | paste -sd" \n") | bc ) )
 	fi
-
+f
 	echo "${NodeSpec[@]}"
 	echo
 done
