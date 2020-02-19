@@ -1,0 +1,53 @@
+#!/bin/bash
+
+MachineTypes=$(gcloud compute machine-types list --filter="zone: us-east1-b" --format=value"(NAME,CPUS,MEMORY_GB)")
+
+ClusterJson=$(yq -jP r - <  cluster.yaml)
+
+function getValue() {
+	 Json="$1"
+	 Key="$2"
+	 NewKey="$3"
+
+	 Value=$(echo "$Json" | jq -r "$Key")
+	 if [ "$Value" != null ]
+	 then
+		echo "${NewKey}=${Value}"
+	 fi
+}
+
+PartitionNames=$(echo "$ClusterJson" | jq -r '.[].partitions|keys|.[]')
+for PartitionName in ${PartitionNames}
+do
+	PartitionJson=$(echo "$ClusterJson" | jq -r '.[].partitions["'${PartitionName}'"]')
+	NodeJson=$(echo "$PartitionJson" | jq -r '.nodes')
+
+	PartitionSpec=()
+
+#	Name Nodes Default State MaxTime LLN
+
+	PartitionSpec+=( PartitionName=$PartitionName )
+
+	PartitionSpec+=( $(getValue "$NodeJson" ".name" "Nodes") )
+	PartitionSpec+=( $(getValue "$PartitionJson" ".Default" "Default") )
+	PartitionSpec+=( $(getValue "$PartitionJson" ".State" "State") )
+	PartitionSpec+=( $(getValue "$PartitionJson" ".MaxTime" "MaxTime") )
+	PartitionSpec+=( $(getValue "$PartitionJson" ".LLN" "LLN") )
+
+	echo "${PartitionSpec[@]}"
+
+	NodeSpec=()
+
+	NodeSpec+=( $(getValue "$NodeJson" ".name" "NodeName") )
+	NodeSpec+=( $(getValue "$NodeJson" ".State" "State") )
+
+	MachineType=$(echo "$NodeJson" | jq -r '.MachineType')
+	if [ "$MachineType" != null ]
+	then
+		NodeSpec+=( CPUs=$(echo "$MachineTypes" | grep -P "^${MachineType}\s" | awk '{print $2}') )
+		NodeSpec+=( RealMemory=$((echo scale=0; (echo "$MachineTypes" | grep -P "^${MachineType}\s" | awk '{print $3}' ; echo '* 1024 / 1') | paste -sd" \n") | bc ) )
+	fi
+f
+	echo "${NodeSpec[@]}"
+	echo
+done

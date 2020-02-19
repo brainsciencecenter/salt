@@ -35,12 +35,13 @@ holder-cluster:
 
     
   partitions:
-    default:
+    DEFAULT:
+        MaxTime: INFINITE
+        LLN: yes
+        State: UP
         nodes:
             name: DEFAULT
-            ImageProject: holder-dd34a9
-            Family: holder-cluster-compute-image
-            ExternalIP: False
+            State: CLOUD
             Region: us-east1
             Zone: us-east1-b
             Preemptible: True
@@ -58,7 +59,7 @@ holder-cluster:
 
     debug:
         project: holder-dd34a9
-        default: True
+        Default: True
         nodes:
             name: holder-cluster-compute[0-2]
             image-source:
@@ -66,7 +67,7 @@ holder-cluster:
               - https://compute.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/ubuntu-1910
             DiskSizeGB: 10
             DiskType: pd-standard
-            MachineType: n1-standard-2
+            MachineType: n1-standard-1
             Preemptible: True
             NetworkPath: projects/pennbrain-host-3097383fff/global/networks/bsc-host-network
             Tags:
@@ -95,7 +96,7 @@ holder-cluster:
     big-proj-a:
         nodes: 
           name: n1-highmem-16-[00-09]
-          machine-type: n1-standard-2
+          MachineType: n1-highmem-16
           tags:
             - compute
             - holder
@@ -107,7 +108,8 @@ holder-cluster:
     gpu-proj-a:
         nodes: 
           name: gpu-[00-09]
-          machine-type: n1-standard-2
+          MachineType: n1-standard-4
+          Gres: gpu:p102:1
           tags:
             - compute
             - holder
@@ -115,3 +117,33 @@ holder-cluster:
         project: holder-proj-a
         labels:
           billing-project: holder-proj-a
+
+#
+# Probably want to use TmpDisk to specify a tmp disk to add to the system
+# AllowGroups
+# Can we change Sockets/CoresPerSocket/ThreadsPerCore to just CPU?
+#
+#NodeName=DEFAULT State=CLOUD
+#PartitionName=DEFAULT MaxTime=INFINITE LLN=yes 
+#
+#GresTypes=gpu
+#
+#NodeName=proja-small-queue-n1-standard-2-[0-99] Sockets=1 CoresPerSocket=1 ThreadsPerCore=2 RealMemory=7070 State=CLOUD
+#
+#PartitionName=proja-small-queue Nodes=proja-small-queue-n1-standard-2-[0-99] Default=NO MaxTime=INFINITE State=UP DefMemPerCPU=3535 LLN=yes
+#
+#NodeName=proja-big-queue-n1-highmem-32-[0-9] Sockets=1 CoresPerSocket=16 ThreadsPerCore=2 RealMemory=206352 State=CLOUD
+#
+#PartitionName=proja-big-queue Nodes=proja-big-queue-n1-highmem-32-[0-9] Default=NO MaxTime=INFINITE State=UP DefMemPerCPU=6448 LLN=yes
+#
+#NodeName=garcea-queue-n1-highmem-32-[0-49] Sockets=1 CoresPerSocket=16 ThreadsPerCore=2 RealMemory=206352 State=CLOUD
+#
+#PartitionName=garcea-queue Nodes=garcea-queue-n1-highmem-32-[0-49] Default=NO MaxTime=INFINITE State=UP DefMemPerCPU=6448 LLN=yes
+#
+#NodeName=proja-gpu-queue-n1-standard-4-[0-9] Sockets=1 CoresPerSocket=2 ThreadsPerCore=2 RealMemory=14510 State=CLOUD Gres=gpu:p100:1
+#
+#PartitionName=proja-gpu-queue Nodes=proja-gpu-queue-n1-standard-4-[0-9] Default=NO MaxTime=INFINITE State=UP DefMemPerCPU=6448 LLN=yes
+#
+#NodeName=projb-small-queue-n1-standard-2-[0-99] Sockets=1 CoresPerSocket=1 ThreadsPerCore=2 RealMemory=7070 State=CLOUD
+#
+#PartitionName=projb-small-queue Nodes=projb-small-queue-n1-standard-2-[0-99] Default=NO MaxTime=INFINITE State=UP DefMemPerCPU=6448 LLN=yes
