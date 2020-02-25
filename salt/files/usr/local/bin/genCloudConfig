@@ -1,0 +1,4 @@
+#!/bin/bash
+echo '#cloud-config'
+echo 'groups:'
+awk -F : '$3 > 1000 { print $1,$4 ; }' /etc/group | sed 's/ *$//; s/ \(.*\)$/: [ & ]/; s/, */, /g; s/^/    - /'
