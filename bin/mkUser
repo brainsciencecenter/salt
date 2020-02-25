@@ -15,7 +15,8 @@ from google.auth.transport.requests import Request
 import pprint
 SCOPES = ['https://www.googleapis.com/auth/admin.directory.user']
 
-CUSTOMER_ID = "C04bow9da"
+#CUSTOMER_ID = "C04bow9da"
+CUSTOMER_ID = "pennbrain.upenn.edu"
 def get_credentials():
 
     creds = None
@@ -31,7 +32,7 @@ def get_credentials():
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json', SCOPES)
+                '/home/holder/.config/gcloud/credentials.json', SCOPES)
             creds = flow.run_local_server(port=0)
         # Save the credentials for the next run
         with open('token.pickle', 'wb') as token:
