@@ -1,0 +1,145 @@
+#!/usr/bin/python3
+
+import pickle
+import argparse
+import pyjq
+import json
+import os
+import re
+import sys
+import time
+import googleapiclient.discovery
+from apiclient import errors
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+
+import pprint
+SCOPES = ['https://www.googleapis.com/auth/admin.directory.user',
+          'https://www.googleapis.com/auth/admin.directory.group',
+          'https://www.googleapis.com/auth/admin.directory.members']
+
+CUSTOMER_ID = "C04bow9da"
+DOMAIN = "pennbrain.upenn.edu"
+MAXRESULTS = 2
+
+def get_credentials():
+
+    creds = None
+    # The file token.pickle stores the user's access and refresh tokens, and is
+    # created automatically when the authorization flow completes for the first
+    # time.
+    if os.path.exists('token.pickle'):
+        with open('token.pickle', 'rb') as token:
+            creds = pickle.load(token)
+    # If there are no (valid) credentials available, let the user log in.
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                '/home/holder/.config/gcloud/credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0)
+        # Save the credentials for the next run
+        with open('token.pickle', 'wb') as token:
+            pickle.dump(creds, token)
+
+    return creds
+
+
+def get_directory_service():
+
+    creds = get_credentials()
+    service = googleapiclient.discovery.build('admin', 'directory_v1', credentials=creds)
+
+    return service
+
+def getGroupGid(Group):
+    description = ""
+
+    if ('description' in Group.keys()):
+        description = Group['description']
+
+    m = re.search(r'^.*\{\s*gid:\s+(?P<gid>\d+)\s*\}', description)
+    if (m):
+        gid = m.group('gid')
+    else:
+        gid = ""
+
+    return(gid)
+
+def getGroupMembers(Group):
+    Members = []
+
+    if ('members' in Group.keys()):
+        Members = list(m['email'] for m in Group['members'])
+
+    return(','.join(sorted(Members)))
+
+def getGroup(service, groupKey=None):
+    Members = []
+    page_token = None
+    while True:
+        try:
+            results = service.members().list(groupKey=groupKey, pageToken=page_token).execute()
+            
+            members = results.get('members')
+            if (members):
+                for m in members:
+                    Members.append(m)
+
+            page_token = results.get('nextPageToken')
+            if (not page_token):
+                break
+        except errors.HttpError as error:
+            print('An error occurred: %s' % (error))
+            break
+
+    return(Members)
+
+def main():
+
+    parser = argparse.ArgumentParser(description='Utility for modifying POSIX user information')
+    parser.add_argument('-j', '--json', action='store_true', help='print json')
+    parser.add_argument('-e', '--etc', action='store_true', help='print /etc/group format')
+
+    args = parser.parse_args()
+
+    service = get_directory_service()
+
+    Groups = []
+    page_token = None
+
+    while True:
+        try:
+            results = service.groups().list(maxResults=MAXRESULTS, domain=DOMAIN, pageToken=page_token).execute()
+#            results = service.users().list(customer="C04bow9da", maxResults=2, domain="pennbrain.upenn.edu", pageToken=page_token).execute()
+#            users = results.get('users')
+#            for u in users:
+#                Users.append(u)
+            groups = results.get('groups')
+            for g in groups:
+
+                g['members'] = getGroup(service,g['email'])
+#                print("Group = ",g,"Members = ",g['members'], file=sys.stderr)
+                Groups.append(g.copy())
+    
+            page_token = results.get('nextPageToken')
+            if (not page_token):
+                break
+
+        except errors.HttpError as error:
+            print('An error occurred: %s' % (error))
+            break
+
+    for g in Groups:
+        if (args.json):
+            print(json.dumps(g, indent=2))
+        else:
+            print("{}:x:{}:{}".format(g['name'],getGroupGid(g),getGroupMembers(g)))
+
+    sys.exit(0)
+
+if __name__ == '__main__':
+    main()
+
+

@@ -1,10 +1,20 @@
 #!/usr/bin/python3
 
+#
+# Group IDs
+# User default group ids start at 3001 and go up
+# Group ids for pennbrain.upenn.edu start at 3000 and go down
+# Service account user and group ids start at 1100 and go up
+# Not expecting more than 100 groups so 2900 to 3000 should be fine
+# Not expecting more than 100 service accounts so 1100 to 1200 should be fine
+#
+
 import pickle
 import argparse
-from jq import jq
+import pyjq
 import json
 import os
+import re
 import sys
 import time
 import googleapiclient.discovery
@@ -13,10 +23,14 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
 import pprint
-SCOPES = ['https://www.googleapis.com/auth/admin.directory.user']
+SCOPES = ['https://www.googleapis.com/auth/admin.directory.user',
+          'https://www.googleapis.com/auth/admin.directory.group',
+          'https://www.googleapis.com/auth/admin.directory.members']
 
-#CUSTOMER_ID = "C04bow9da"
-CUSTOMER_ID = "pennbrain.upenn.edu"
+CUSTOMER_ID = "C04bow9da"
+DOMAIN = "pennbrain.upenn.edu"
+MAXRESULTS = 2
+#CUSTOMER_ID = "pennbrain.upenn.edu"
 def get_credentials():
 
     creds = None
@@ -116,6 +130,125 @@ def update_user_posix_credentials(user_email, home_dir, username, shell, uid, gi
               'Check `gcloud beta compute os-login describe-profile` for changes')
 
 
+def getGroup(service, groupKey=None):
+    Members = []
+    page_token = None
+    while True:
+        try:
+            results = service.members().list(groupKey=groupKey, pageToken=page_token).execute()
+            
+            members = results.get('members')
+            for m in members:
+                Members.append(m)
+
+            page_token = results.get('nextPageToken')
+            if (not page_token):
+                break
+        except errors.HttpError as error:
+            print('An error occurred: %s' % (error))
+            break
+
+    return(Members)
+
+def addUsersToGroup(service, group=None, Users=None):
+
+    if (group and Users):
+        for user in Users:
+            results = service.members().insert(groupKey=group, body={ "email": user }).execute()
+            print(json.dumps(results, indent=2))
+            
+
+def deleteUsersFromGroup(service, group=None, Users=None):
+    groupKey = 'holder-group@pennbrain.upenn.edu'
+    memberEmail = 'gmcfoo@pennbrain.upenn.edu'
+
+    results = service.members().delete(groupKey=groupKey, memberKey=memberEmail).execute()
+    print(json.dumps(results, indent=2))
+
+def createGroup(service, group, gid=None):
+    results = service.groups().insert(body={ 'name': group, 'email': group, 'description': '{gid: %d}' % (gid)}).execute()
+    print(json.dumps(results, indent=2))
+    
+def deleteGroup(service, group=None):
+    results = service.groups().delete(groupKey=group).execute()
+    print(json.dumps(results, indent=2))
+
+def getMinGroupGid(service):
+
+    Groups = []
+    page_token = None
+    while True:
+        try:
+            results = service.groups().list(maxResults=2, domain="pennbrain.upenn.edu", pageToken=page_token).execute()
+            groups = results.get('groups')
+            for g in groups:
+                Groups.append(g)
+
+            page_token = results.get('nextPageToken')
+            if (not page_token):
+                break
+
+        except errors.HttpError as error:
+            print('An error occurred: %s' % (error))
+            break
+
+#    print(json.dumps(sorted(jq('.[].description | sub("^.*(?<gid>{gid: [0-9]+}).*$";"\(.gid)") | sub("gid"; "\"gid\"") | fromjson.gid'), indent=2)))
+    Gids = json.dumps(pyjq.all('.[].description | sub("^.*(?<gid>{gid: [0-9]+}).*$"; "\(.gid)") | sub("gid"; "gid") ', Groups), indent=2)
+    Gids = json.loads(re.sub('gid:', '"gid":', re.sub('"', '', Gids)))
+
+    return(sorted(pyjq.all('.[].gid', Gids))[0])
+
+def listUsers(service):
+    page_token = None
+    Users = []
+
+    while True:
+        try:
+            results = service.users().list(customer=CUSTOMER_ID, maxResults=MAXRESULTS, domain=DOMAIN, pageToken=page_token).execute()
+            users = results.get('users')
+            for u in users:
+                Users.append(u)
+
+            page_token = results.get('nextPageToken')
+            if (not page_token):
+                break
+        except errors.HttpError as error:
+            print('An error occurred: %s' % (error))
+            break
+
+    print(json.dumps(Users, indent=2))
+
+def addUser(service, username=None, firstname=None, lastname=None, password=None, email=None):
+    
+    user = {
+        "name": {
+            "familyName": lastname,
+            "givenName": firstname
+        },
+        "password": password,
+        "primaryEmail": username,
+        "customerId": CUSTOMER_ID,
+        
+        "emails": [ 
+            { "address": email, 'type': 'work' }
+        ],
+        "changePasswordAtNextLogin": True
+    }
+
+    result = service.users().insert(body=user).execute()
+    print(json.dumps(result.get('users')))
+
+def getUser(service, userKey=None):
+
+    results = service.users().get(userKey=userKey).execute()
+    print(json.dumps(results, indent=2))
+
+def deleteUser(service, userKey=None):
+    
+    results = service.users().delete(userKey=userKey).execute()
+    print(json.dumps(results, indent=2))
+
+
 def main():
 
     parser = argparse.ArgumentParser(description='Utility for modifying POSIX user information')
@@ -132,15 +265,35 @@ def main():
 
     service = get_directory_service()
 
+    getUser(service, "gmcfoo@pennbrain.upenn.edu")
+#    deleteUser(service,"gmcfoo2@pennbrain.upenn.edu")    
+#    listUsers(service)
+#    addUser(service, username="gmcfoo2@pennbrain.upenn.edu", firstname="George", lastname="McFoo2", password="YiddishPurifyStubbedGenetics", email="gaylord.holder@gmail.com")
+    
+#    print(getMinGroupGid(service))
+
+#    createGroup(service, group="holder-demo-group@pennbrain.upenn.edu", gid=2999)
+#    deleteGroup(service, group="holder-demo-group@pennbrain.upenn.edu")
+    sys.exit(0)
+
     Users = []
+    Groups = []
+    Members = []
     page_token = None
+
+
     while True:
         try:
-            results = service.users().list(customer="C04bow9da", maxResults=2, domain="pennbrain.upenn.edu", pageToken=page_token).execute()
-            users = results.get('users')
-            for u in users:
-                Users.append(u)
-
+            results = service.groups().list(maxResults=2, domain="pennbrain.upenn.edu", pageToken=page_token).execute()
+#            results = service.users().list(customer="C04bow9da", maxResults=2, domain="pennbrain.upenn.edu", pageToken=page_token).execute()
+#            users = results.get('users')
+#            for u in users:
+#                Users.append(u)
+            groups = results.get('groups')
+            for g in groups:
+                g['members'] = getGroup(service,g['email'])
+                Groups.append(g)
+    
             page_token = results.get('nextPageToken')
             if (not page_token):
                 break
@@ -148,9 +301,12 @@ def main():
             print('An error occurred: %s' % (error))
             break
 
+#    for g in Groups:
+#        print(getGroup(service, groupKey=g["email"]))
 
+    sys.exit(0)
     MaxUID = sorted(jq('[ ..|.uid?|strings]').transform(Users))[-1]
-    MaxGID = sorted(jq('[ ..|.gid?|strings]').transform(Users))[-1]
+    MaxUserGID = sorted(jq('[ ..|.gid?|strings]').transform(Users))[-1]
     print("MaxUID = ", MaxUID, "MaxGID = ", MaxGID)
     
     sys.exit(0)
