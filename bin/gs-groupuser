@@ -153,6 +153,9 @@ def ensureDomain(name):
 
     return(n)
     
+def stripDomain(name):
+    return(re.sub('@.*$','',name))
+    
 def gsAddUsersToGroup(service, groupKey=None, Users=None):
 
     if (groupKey and Users):
@@ -201,7 +204,7 @@ def isUserGid(gid):
 #
 # gs-groupadd [-d description][-g gid][-c|s|U][-u user1[[,user2]...] group [group...]
 #
-def GroupAdd():
+def groupAdd():
     parser = argparse.ArgumentParser(description='Create GS groups')
     parser.add_argument('-g', '--gid', type=int, help='posix group id. Defaults to next available id')
     parser.add_argument('-u', '--users', type=str, help='comma separated list of existing users to add to group(s)')
@@ -541,19 +544,131 @@ def userGet():
     elif(args.cloud_config):
         print(yaml.dump(Users, indent=2))
 
+def gsGetUserUids(service):
+
+    Users = []
+    page_token = None
+    while True:
+        try:
+            results = service.users().list(maxResults=MAXRESULTS, domain=DOMAIN, pageToken=page_token).execute()
+            users = results.get('users')
+            for u in users:
+                Users.append(u)
+
+            page_token = results.get('nextPageToken')
+            if (not page_token):
+                break
+
+        except errors.HttpError as error:
+            print('An error occurred: %s' % (error))
+            break
+
+    Uids = pyjq.all('.[]|(.posixAccounts[].uid)?', Users)
+    
+    return(sorted(list(set(Uids))))
+
+#
+# gs-user_add [-c comment][-d homedir][-G group1[[group2]...][-r][-S shell][-s ssh-key][-u uid] user1 [[user2]...]
+#
+def userAdd():
+    parser = argparse.ArgumentParser(description='Create GS users')
+    parser.add_argument('-c', '--comment', type=str, help='User name')
+    parser.add_argument('-d', '--homedir', type=str, help='users home directory path')
+    parser.add_argument('-G', '--groups', type=str, help='comma separated list of groups to add user to')
+    parser.add_argument('-r', '--service', action='store_true', help='service users for applications especially for ones that need consistent uids across NFS')
+    parser.add_argument('-S', '--shell', type=str, help='login shell')
+    parser.add_argument('-s', '--ssh-key', type=str, help='ssh public key, or file containing key')
+    parser.add_argument('-u', '--uid', type=int, help='posix user id. Defaults to next available id')
+    parser.add_argument('users', nargs='+', help='usernames to create')
+
+    args = parser.parse_args()
+
+    service = get_directory_service()
+
+    Comment = ""
+    HomeDir = ""
+    Groups = []
+    Service = False
+    Shell = '/bin/bash'       # *** should probably readd form cluster-config.yaml
+    SshKey = None
+    NewUid = None
+
+    for user in args.users:
+        u = ensureDomain(user)
+        UserName = stripDomain(user)
+
+        if (args.comment):
+            Comment = args.comment
+
+        if (args.homedir):
+            HomeDir = args.homedir
+        else:
+            HomeDir = "/home/{}".format(UserName)
+
+        if (args.groups):
+            Groups = sorted(list(set(args.groups.split(','))))
+
+        if (args.service):
+            Service = True
+
+        if (args.ssh_key):
+            try:
+                with open(args.ssh_key) as x: SshKey = x.read().rstrip()
+            except (OSError, IOError, FileNotFoundError) as e:
+                SshKey = args.ssh_key
+
+        if (args.shell):
+            Shell = args.shell
+
+        if (args.uid):
+            if (NewUid):
+                NewUid += 1
+            else:
+                NewUid = args.uid
+
+        else:
+            Uids = gsGetUserUids(service)
+            # *** need to fix service uids
+
+            if (args.service):
+                NewUid = ServiceUids[-1] + 1
+            else:
+                NewUid = int(Uids[-1]) + 1
+
+            # *** Figure out next service uid or next regular user id
+
+        if (debug):
+            print("userAdd -c {} -d {} -G {} {} -S {} -s {} -u {} {} {}".format(Comment,HomeDir,','.join(Groups),Service,Shell,SshKey,NewUid,UserName, u))
+#        if (gsCreateUser(service, u, uid=NewUid) and Groups):
+#            for g in Groups:
+#                gsAddUserToGroup(service,groupKey=g, Users=[u])
+
+
+#
+# gs-user_del user1 [[user2]...]
+# 
 
 def main():
     if (CmdName == 'gs-groupget'):
         groupGet()
     elif (CmdName == 'gs-groupadd'):
-        GroupAdd()
+        groupAdd()
     elif (CmdName == 'gs-groupdel'):
         GroupDel()
     elif (CmdName == 'gs-groupmod'):
         GroupMod()
     elif (CmdName == 'gs-userget'):
         userGet()
-    
+    elif (CmdName == 'gs-useradd'):
+        userAdd()
+    elif (CmdName == 'gs-userdel'):
+        userDel()
+    elif (CmdName == 'gs-usermod'):
+        userMod()
+    elif (CmdName == 'gs-userid'):
+        userId()
+    elif (CmdName == 'gs-dump'):
+        gsDump()
 
 if __name__ == '__main__':
     main()

@@ -8,6 +8,8 @@
 # Not expecting more than 100 groups so 2900 to 3000 should be fine
 # Not expecting more than 100 service accounts so 1100 to 1200 should be fine
 #
+# https://google-api-client-libraries.appspot.com/documentation/admin/directory_v1/python/latest/index.html
+
 # https://googleapis.github.io/google-api-python-client/docs/epy/googleapiclient.discovery-module.html
 # https://developers.google.com/admin-sdk/directory/v1/quickstart/python
 # https://developers.google.com/admin-sdk/directory/v1/reference/users
