@@ -243,7 +243,8 @@ def addUser(service, username=None, firstname=None, lastname=None, password=None
     }
 
     result = service.users().insert(body=user).execute()
-    print(json.dumps(result.get('users')))
+    #print(json.dumps(result.get('users')))
+    print(json.dumps(result, indent=2))
 
 def getUser(service, userKey=None):
 

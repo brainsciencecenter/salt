@@ -10,6 +10,9 @@ import sys
 import time
 import yaml
 import googleapiclient.discovery
+
+from xkcdpass import xkcd_password as xp
+
 from apiclient import errors
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
@@ -24,11 +27,11 @@ DOMAIN = "pennbrain.upenn.edu"
 MAXRESULTS = 2
 CmdName = os.path.basename(sys.argv[0])
 
-MinServiceGid = 1100
-MaxServiceGid = 2000
-MinCollectiveGid = 2100
-MaxCollectiveGid = 3000
-MinUserGid = 3001
+MinServiceId = 1100
+MaxServiceId = 2000
+MinCollectiveId = 2100
+MaxCollectiveId = 3000
+MinUserId = 3001
 
 debug=False
 
@@ -192,17 +195,17 @@ def gsGetGroupGids(service):
 
     return(sorted(pyjq.all('.[].gid', Gids)))
 
-def isCollectiveGid(gid):
-    return(gid >= MinCollectiveGid and gid <= MaxCollectiveGid)
+def isCollectiveId(id):
+    return(id >= MinCollectiveId and id <= MaxCollectiveId)
 
-def isServiceGid(gid):
-    return(gid >= MinServiceGid and gid <= MaxServiceGid)
+def isServiceId(id):
+    return(id >= MinServiceId and id <= MaxServiceId)
 
-def isUserGid(gid):
-    return(gid >= MinUserGid)
+def isUserId(id):
+    return(id >= MinUserId)
 
 #
-# gs-groupadd [-d description][-g gid][-c|s|U][-u user1[[,user2]...] group [group...]
+# gs-groupadd [-d description][-g gid][-C|r|U][-u user1[[,user2]...] group [group...]
 #
 def groupAdd():
     parser = argparse.ArgumentParser(description='Create GS groups')
@@ -211,8 +214,8 @@ def groupAdd():
     parser.add_argument('groups', nargs='+', help='groups to get, if none specified, get all groups')
 
     setop = parser.add_mutually_exclusive_group()
-    setop.add_argument('-c', '--collective', action='store_true', help='collective group')
-    setop.add_argument('-s', '--service', action='store_true', help='service group for programs/applications')
+    setop.add_argument('-U', '--collective', action='store_true', help='collective group')
+    setop.add_argument('-r', '--service', action='store_true', help='service group for programs/applications')
     setop.add_argument('-U', '--User', action='store_true', help='user default group')
     args = parser.parse_args()
 
@@ -231,11 +234,11 @@ def groupAdd():
             else:
                 NewGid = args.gid
 
-            if (isCollectiveGid(NewGid)):
-                t = '-c'
-            elif(isServiceGid(NewGid)):
-                t = '-s'
-            elif(isUserGid(NewGid)):
+            if (isCollectiveId(NewGid)):
+                t = '-C'
+            elif(isServiceId(NewGid)):
+                t = '-r'
+            elif(isUserId(NewGid)):
                 t = '-U'
             else:
                 print("{} : Invalid Gid '{}'".format(CmdName, NewGid), file=sys.stderr)
@@ -245,29 +248,29 @@ def groupAdd():
             Gids = gsGetGroupGids(service)
 
             if (args.collective):
-                t = '-c'
-                Gid = list(filter(isCollectiveGid, Gids))
+                t = '-C'
+                Gid = list(filter(isCollectiveId, Gids))
                 if (not Gid):
                     Gid = [ MaxCollectiveGid ]
 
                 NewGid = Gid[0] - 1
             elif (args.service):
-                t = '-s'
-                Gid = list(filter(isServiceGid, Gids))
+                t = '-r'
+                Gid = list(filter(isServiceId, Gids))
                 if (not Gid):
                     Gid = [ MinServiceGid ]
 
                 NewGid = Gid[0] + 1
             elif (args.User):
                 t = '-U'
-                Gid = list(filter(isUserGid, Gids))
+                Gid = list(filter(isUserId, Gids))
                 if (not Gid):
                     Gid = [ MinUserGid ]
 
                 NewGid = Gid[-1] + 1
             else:
-                t = '-c'
-                Gid = list(filter(isCollectiveGid, Gids))
+                t = '-C'
+                Gid = list(filter(isCollectiveId, Gids))
                 if (not Gid):
                     Gid = [ MaxCollectiveGid ]
 
@@ -423,7 +426,7 @@ def GroupMod():
 #        print("gsGroupAdd -u {} {}".format(','.join(UpdateUsers), g))
 
 #
-# gs-groupget [-e|j][-u][-c][[group1]...]
+# gs-groupget [-e|j][-C|r|U][[group1]...]
 #
 def groupGet():
     parser = argparse.ArgumentParser(description='List GS groups')
@@ -432,6 +435,7 @@ def groupGet():
     group.add_argument('-j', '--json', action='store_true', help='print json')
     group.add_argument('-e', '--etc', action='store_true', help='print /etc/group format')
     group.add_argument('-c', '--cloud-config', action='store_true', help='print /etc/group format')
+
     parser.add_argument('groups', nargs='*', help='groups to get, if none specified, get all groups')
 
     args = parser.parse_args()
@@ -488,15 +492,11 @@ def gsUserGet(service, userKey=None):
         try:
             if (userKey):
                 results = service.users().get(userKey=userKey).execute()
-                users = [ results ]
-
+                Users.append(results)
             else:
                 results = service.users().list(maxResults=MAXRESULTS, domain=DOMAIN, pageToken=page_token).execute()
-                users = results.get('users')
+                Users += results.get('users')
 
-            for u in users:
-                Users.append(u)
-    
             page_token = results.get('nextPageToken')
             if (not page_token):
                 break
@@ -508,7 +508,8 @@ def gsUserGet(service, userKey=None):
     return(Users)
 
 #
-# gs-userget [-c|e|j][[user1]...]
+# *** need to add filter of user type service collective, user
+# gs-userget [-c|e|j][-C|r|U][[user1]...]
 #
 def userGet():
     parser = argparse.ArgumentParser(description='List GS Users')
@@ -533,7 +534,7 @@ def userGet():
 
             User = gsUserGet(service,UserName)
             if (User):
-                Users.append(User)
+                Users += User
             else:
                 print("{}: No such User '{}'".format(CmdName,u))
     else:
@@ -543,6 +544,17 @@ def userGet():
         print(json.dumps(Users, indent=2))
     elif(args.cloud_config):
         print(yaml.dump(Users, indent=2))
+    else:
+        for u in Users:
+            # *** What to do about google service accounts?
+            if ('posixAccounts' in u.keys()):
+                print("{}:{}:{}:{}:{},,,:{}:{}".format(u['posixAccounts'][0]['username'],
+                                                   'x',
+                                                   u['posixAccounts'][0]['uid'],
+                                                   u['posixAccounts'][0]['gid'],
+                                                   u['name']['fullName'],
+                                                   u['posixAccounts'][0]['homeDirectory'],
+                                                   u['posixAccounts'][0]['shell']))
 
 def gsGetUserUids(service):
 
@@ -565,19 +577,172 @@ def gsGetUserUids(service):
 
     Uids = pyjq.all('.[]|(.posixAccounts[].uid)?', Users)
     
-    return(sorted(list(set(Uids))))
+    return(sorted(list(set(map(int,Uids)))))
+
+def gsUserMod(service, userKey=None, GivenName=None, FamilyName=None, gecos=None, homedir=None, uid=None, gid=None, shell=None,  username=None, sshkeys=[], secondaryEMails=[], reset_password=False, password=None, verbose=False, noop=False):
+
+    Update = False
+
+    Body = gsUserGet(service,userKey=userKey)[0]
+    if ('posixAccounts' in Body.keys()):
+        posixAccount = Body['posixAccounts'][0]
+        print("posixAccount type = ", type(posixAccount))
+    else:
+        posixAccount = {
+            "systemId": "",
+            "primary": True,
+            "operatingSystemType": "unspecified"
+        }
+
+
+    """
+    Body['name'] = {}
+
+    if (GivenName):
+        Body['Name']['GivenName'] = GivenName
+        Update = True
+    
+    if (FamilyName):
+        Body['Name']['FamilyName'] = FamilyName
+        Update = True
+    """
+    
+    if (gecos):
+        posixAccount['gecos'] = gecos
+
+    if (homedir):
+        posixAccount['homeDirectory'] = homedir
+        Update = True
+    
+    if (uid):
+        posixAccount['uid'] = str(uid)
+        Update = True
+    
+    if (gid):
+        posixAccount['gid'] = str(gid)
+        Update = True
+
+    if (shell):
+        posixAccount['shell'] = shell
+        Update = True
+    
+    if (username):
+        posixAccount['username'] = username
+        Update = True
+    
+    if (sshkeys):
+        Body['sshPublicKeys'] = sshkeys
+        Update = True
+    
+    if (sshkeys):
+        Body['sshPublicKeys'] = sshkeys
+        Update = True
+    
+    if (secondaryEMails):
+        Body['emails'] = emails
+        Update = True
+
+    if (reset_password):
+        Body['changePasswordAtNextLogin'] = reset_password
+        Update = True
+
+    if (password):
+        Body['password'] = password
+        Update = True
+
+    if (verbose):
+        print("gsUserMod ", locals())
+
+    Body['posixAccounts'] = [ posixAccount ]
+    try:
+        results = service.users().update(userKey=userKey, body=Body).execute()
+        print("gsUserMod UpdateBody results", json.dumps(results, indent=2))
+    except errors.HttpError as error:
+        print('An error updating the body for {} occurred: {}'.format(userKey,error.content), file=sys.stderr)            
+        return(False)
+
+    return(results)
+
 
 #
-# gs-user_add [-c comment][-d homedir][-G group1[[group2]...][-r][-S shell][-s ssh-key][-u uid] user1 [[user2]...]
+# Required to create a new account
+# + givenName
+# + familyName
+# + primaryEmail
+# + password
+def gsUserAdd(service, primaryEmail=None, username=None, uid=None, gid=None, homedir=None, shell=None, sshkeys=[], secondaryEMails=[], reset_password=False, password=None, GivenName=None, FamilyName=None, verbose=False, noop=False):
+
+    Body = {}
+    Body['name'] = {}
+
+    if (verbose):
+        print("gsUserAdd")
+        
+    if (primaryEmail):
+        Body['primaryEmail'] = primaryEmail
+    
+    if (GivenName):
+        Body['name']['givenName'] = GivenName
+    
+    if (FamilyName):
+        Body['name']['familyName'] = FamilyName
+    
+    if (sshkeys):
+        Body['sshPublicKeys'] = sshkeys
+        UpdateBody = True
+    
+    if (secondaryEMails):
+        Body['emails'] = list(map(lambda x: {'address': x, 'type': 'work'}, secondaryEMails))
+        Body['recoveryEmail'] = secondaryEMails[0]
+        
+    Body['changePasswordAtnextLogin'] = reset_password
+
+    if (password):
+        Body['password'] = password
+
+    if (verbose or noop):
+        print(json.dumps(Body, indent=2))
+
+    try:
+        results = service.users().insert(body=Body).execute()
+        if (results):
+            # only need to update posixAccount info, cause you can't seem to add it with 
+            # the rest of the body
+            try:
+                if (verbose):
+                    print("Calling gsUserMod", username)
+                time.sleep(1)
+                results2 = gsUserMod(service, userKey=primaryEmail, homedir=homedir, uid=uid, gid=gid, shell=shell, username=username, verbose=verbose, noop=verbose)
+                print("Return from gsUserMod")
+            except errors.HttpError as error:
+                print('An error updating the posixAccounts occurred: %s' % (error), file=sys.stderr)            
+                return(False)
+
+    except errors.HttpError as error:
+        print('An error adding user {} occurred: {}'.format(username,error), file=sys.stderr)
+    
+    
+#
+# *** set password, require new password on login, 2ndary email address
+# gs-user_add [-c comment][-d homedir][-G group1[[group2]...][-M email1[[,email2]..]][-p password] [-C|r|U][-S shell][-s ssh-key][-u uid] user1 [[user2]...]
 #
 def userAdd():
     parser = argparse.ArgumentParser(description='Create GS users')
     parser.add_argument('-c', '--comment', type=str, help='User name')
     parser.add_argument('-d', '--homedir', type=str, help='users home directory path')
     parser.add_argument('-G', '--groups', type=str, help='comma separated list of groups to add user to')
-    parser.add_argument('-r', '--service', action='store_true', help='service users for applications especially for ones that need consistent uids across NFS')
+    idspace = parser.add_mutually_exclusive_group()
+    idspace.add_argument('-C', '--collective', action='store_true', help='Collective IDs')
+    idspace.add_argument('-r', '--service', action='store_true', help='Service IDs')
+    idspace.add_argument('-U', '--user', action='store_true', help='Users IDs')
+
+    parser.add_argument('-M', '--emails', type=str, required=True, help='comma separated emails to associate with user')
+    parser.add_argument('-p', '--password', type=str, help='Users unencrypted password')
+    parser.add_argument('-R', '--reset-password', action='store_true', help='require password reset on first login')
+    parser.add_argument('-n', '--noop', action='store_true', help='dont do anything, just show what would be done')
+    parser.add_argument('-v', '--verbose', action='store_true', help='show whats being done')
     parser.add_argument('-S', '--shell', type=str, help='login shell')
-    parser.add_argument('-s', '--ssh-key', type=str, help='ssh public key, or file containing key')
+    parser.add_argument('-s', '--ssh-keys', type=str, help='comma separated ssh public keys, or files containing key')
     parser.add_argument('-u', '--uid', type=int, help='posix user id. Defaults to next available id')
     parser.add_argument('users', nargs='+', help='usernames to create')
 
@@ -587,11 +752,19 @@ def userAdd():
 
     Comment = ""
     HomeDir = ""
+    GivenName = ""
+    FamilyName = ""
     Groups = []
-    Service = False
+    EMails = []
+    Password = None
+    RequirePasswordReset = False
+    t = "-U"
     Shell = '/bin/bash'       # *** should probably readd form cluster-config.yaml
-    SshKey = None
+    SshKeys = []
     NewUid = None
+
+    noop = args.noop
+    verbose = args.verbose
 
     for user in args.users:
         u = ensureDomain(user)
@@ -599,6 +772,13 @@ def userAdd():
 
         if (args.comment):
             Comment = args.comment
+            NameField = re.sub(',.*$','',Comment)
+            if (re.search(' ', NameField)):
+                GivenName = NameField.split(' ')[0]
+                FamilyName = NameField.split(' ')[-1]
+        else:
+            GivenName = UserName
+            FamilyName = UserName 
 
         if (args.homedir):
             HomeDir = args.homedir
@@ -608,14 +788,36 @@ def userAdd():
         if (args.groups):
             Groups = sorted(list(set(args.groups.split(','))))
 
-        if (args.service):
-            Service = True
-
-        if (args.ssh_key):
+        # *** will have to deal with password hashing at some point
+        if (args.password):
             try:
-                with open(args.ssh_key) as x: SshKey = x.read().rstrip()
+                with open(args.password) as x: Password = x.read().rstrip()
             except (OSError, IOError, FileNotFoundError) as e:
-                SshKey = args.ssh_key
+                Password = args.password
+        else:
+            # create a wordlist from the default wordfile
+            # use words between 5 and 8 letters long
+            wordfile = xp.locate_wordfile()
+            mywords = xp.generate_wordlist(wordfile=wordfile, min_length=5, max_length=8)
+            mywords = [x.capitalize() for x in mywords]
+            Password = xp.generate_xkcdpassword(mywords, numwords=4, delimiter='')
+
+        RequirePasswordReset = args.reset_password
+            
+        if (args.service):
+            t = '-r'
+
+        if (args.collective):
+            t = '-C'
+
+        if (args.user):
+            t = '-U'
+
+        if (args.ssh_keys):
+            try:
+                with open(args.ssh_keys) as x: [ SshKeys ] = x.read().rstrip()
+            except (OSError, IOError, FileNotFoundError) as e:
+                SshKeys = args.ssh_key.split(',')
 
         if (args.shell):
             Shell = args.shell
@@ -624,30 +826,169 @@ def userAdd():
             if (NewUid):
                 NewUid += 1
             else:
-                NewUid = args.uid
+                NewUid = int(args.uid)
 
         else:
             Uids = gsGetUserUids(service)
-            # *** need to fix service uids
+            #
+            # *** Can't create a collective user, only collective groups
+            #     which are reflected in the user space
+            # *** Might be able to use the custom schema to add collective groups
+            ServiceUids = list(filter(isServiceId, Uids))
 
             if (args.service):
-                NewUid = ServiceUids[-1] + 1
+                if (ServiceUids):
+                    NewUid = ServiceUids[-1] + 1
+                else:
+                    if (NewUid):
+                        NewUid += 1
+                    else:
+                        NewUid = MinServiceId 
             else:
                 NewUid = int(Uids[-1]) + 1
 
             # *** Figure out next service uid or next regular user id
 
-        if (debug):
-            print("userAdd -c {} -d {} -G {} {} -S {} -s {} -u {} {} {}".format(Comment,HomeDir,','.join(Groups),Service,Shell,SshKey,NewUid,UserName, u))
-#        if (gsCreateUser(service, u, uid=NewUid) and Groups):
-#            for g in Groups:
-#                gsAddUserToGroup(service,groupKey=g, Users=[u])
+        if (SshKeys):
+            Body['sshPublicKeys'] = list(map(lambda x: {'key': x, 'expirationTimeUsec': 0}, SshKeys))
 
+        if (args.emails):
+            EMails = sorted(list(set(args.emails.split(','))))
+
+        if (verbose):
+            print("userAdd -c {} -d {} -G {} {} -M {} -p {} -R {} -S {} -s {} -u {} {} {}".format(Comment,HomeDir,','.join(Groups),t,','.join(EMails), Password, RequirePasswordReset,Shell,SshKeys,NewUid,UserName, u))
+
+        Res = True
+        if (not noop):
+            Res = gsUserAdd(service, primaryEmail=u, username=UserName, uid=NewUid, gid=NewUid, homedir=HomeDir, shell=Shell, sshkeys=SshKeys, secondaryEMails=EMails, reset_password=RequirePasswordReset, password=Password, GivenName=GivenName, FamilyName=FamilyName, noop=noop, verbose=verbose)
+
+        if (Res):
+            print("Res = ",json.dumps(Res,indent=2))
+
+            if (Groups):
+                for g in Groups:
+                    gsAddUserToGroup(service,groupKey=g, Users=[u])
+        else:
+            print("UserAdd Failed", file=sys.stderr)
+
+
+def userMod():
+    parser = argparse.ArgumentParser(description='Modify GS users')
+    parser.add_argument('-d', '--homedir', type=str, help='users home directory path')
+    parser.add_argument('-G', '--groups', type=str, help='comma separated list of groups to add user to')
+    parser.add_argument('-g', '--gid', type=int, help='posix group id.lable id')
+    parser.add_argument('-M', '--emails', type=str, help='comma separated emails to associate with user, resets all emails')
+    parser.add_argument('-p', '--password', type=str, help='Users unencrypted password')
+    parser.add_argument('-R', '--reset-password', action='store_true', help='require password reset on first login')
+    parser.add_argument('-n', '--noop', action='store_true', help='dont do anything, just show what would be done')
+    parser.add_argument('-v', '--verbose', action='store_true', help='show whats being done')
+    parser.add_argument('-S', '--shell', type=str, help='login shell')
+    parser.add_argument('-s', '--ssh-keys', type=str, help='comma separated ssh public keys, or files containing key')
+    parser.add_argument('-u', '--uid', type=int, help='posix user id. Defaults to next available id')
+    parser.add_argument('users', nargs='+', help='usernames to create')
+
+    args = parser.parse_args()
+
+    service = get_directory_service()
+
+    HomeDir = None
+    GivenName = None
+    FamilyName = None
+    Groups = []
+    EMails = []
+    Password = None
+    RequirePasswordReset = False
+    t = "-U"
+    SshKeys = []
+    NewUid = None
+    NewGid = None
+    Shell = None
+
+    noop = args.noop
+    verbose = args.verbose
+
+    for user in args.users:
+        u = ensureDomain(user)
+        UserName = stripDomain(user)
+
+        if (args.homedir):
+            HomeDir = args.homedir
+
+        if (args.groups):
+            Groups = sorted(list(set(args.groups.split(','))))
+
+        # *** will have to deal with password hashing at some point
+        if (args.password):
+            try:
+                with open(args.password) as x: Password = x.read().rstrip()
+            except (OSError, IOError, FileNotFoundError) as e:
+                Password = args.password
+        else:
+            # create a wordlist from the default wordfile
+            # use words between 5 and 8 letters long
+            wordfile = xp.locate_wordfile()
+            mywords = xp.generate_wordlist(wordfile=wordfile, min_length=5, max_length=8)
+            mywords = [x.capitalize() for x in mywords]
+            Password = xp.generate_xkcdpassword(mywords, numwords=4, delimiter='')
+
+        RequirePasswordReset = args.reset_password
+            
+        if (args.ssh_keys):
+            try:
+                with open(args.ssh_keys) as x: [ SshKeys ] = x.read().rstrip()
+            except (OSError, IOError, FileNotFoundError) as e:
+                SshKeys = args.ssh_key.split(',')
+
+        if (args.shell):
+            Shell = args.shell
+
+        if (args.uid):
+            NewUid = int(args.uid)
+
+        if (args.gid):
+            NewGid = int(args.gid)
+
+        if (SshKeys):
+            Body['sshPublicKeys'] = list(map(lambda x: {'key': x, 'expirationTimeUsec': 0}, SshKeys))
+
+        if (args.emails):
+            EMails = sorted(list(set(args.emails.split(','))))
+
+        if (verbose):
+            print("userMod -d {} -G {} {} -M {} -p {} -R {} -S {} -s {} -u {} {} {}".format(HomeDir,','.join(Groups),t,','.join(EMails), Password, RequirePasswordReset,Shell,SshKeys,NewUid,UserName, u))
+        try:
+            results2 = gsUserMod(service, userKey=u, homedir=HomeDir, uid=NewUid, gid=NewGid, shell=Shell, username=UserName, verbose=verbose, noop=verbose)
+            print("results2", json.dumps(results2, indent=2))
+        except errors.HttpError as error:
+            print('An error updating user {} occurred: {}'.format(primaryEmail,error), file=sys.stderr)
+
+def gsUserDel(service, userKey=None):
+    try:
+        results = service.users().delete(userKey=userKey).execute()
+        return(True)
+    except errors.HttpError as error:
+        print('{}: deleting user {} : An error occurred: {}'.format(CmdName, userKey, error), file=sys.stderr)
+        return(False)
 
 #
-# gs-user_del user1 [[user2]...]
+# gs-userdel user1 [[user2]...]
 # 
+def userDel():
 
+    parser = argparse.ArgumentParser(description='Delete GS Users')
+
+    parser.add_argument('users', nargs='+', help='users to delete')
+
+    args = parser.parse_args()
+
+    service = get_directory_service()
+
+    for user in args.users:
+        u = ensureDomain(user)
+        # Delete the user. user may not exist.  Deletion may fail
+        gsUserDel(service, userKey=u)
+
+    
 def main():
     if (CmdName == 'gs-groupget'):
         groupGet()
