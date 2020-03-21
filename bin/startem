@@ -31,6 +31,9 @@ MinionID="$FQDN"
 
 # --verbosity=none -q
 
+InstanceName=holder-cluster1-controller
+CmdArgs="--address=34.74.241.254"
+
 gcloud beta compute instances create $InstanceName		\
 	"${CmdArgs[@]}"								\
 	--project=holder-dd34a9 						\
