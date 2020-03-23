@@ -14,10 +14,14 @@ Partitions="DEFAULT $(echo "$AllPartitionJson" | jq -r 'keys[]' | grep -v 'DEFAU
 for p in $Partitions
 do
 	PartitionJson=$(echo "$AllPartitionJson" | jq -r ".${p}")
-	(echo PartitionName="$p"; echo "$PartitionJson" | jq -r '. | select(.PartitionParameters != null) | .PartitionParameters | keys[] as $k | "\($k)=\(.[$k])"' )| xargs
-
 	NodeJson=$(echo "$PartitionJson" | jq -r '.Nodes')
+	NodeName=$(echo "$NodeJson" | jq -r '.[].NodeName | select(. != null)')
+
 	echo "$NodeJson" | jq -r '.[] as $p | $p | keys[] as $k | "\($k)=\(.[$k])"' | xargs
+
+
+	(echo PartitionName="$p"; echo "Nodes=${NodeName}"; echo "$PartitionJson" | jq -r '. | select(.PartitionParameters != null) | .PartitionParameters | keys[] as $k | "\($k)=\(.[$k])"' ) | xargs
+
 	echo ""
 done
 
