@@ -338,6 +338,8 @@ addServices () {
 # + munge startup is before nfs mount
 # + slurmd doesn't start 
 # + Should be able to use n1-standard-1 machine
+# + update resume.py and cloud-init
+
 
 
 if [ "$CmdName" == mkcluster ]

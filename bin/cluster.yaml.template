@@ -11,33 +11,8 @@ holder3-cluster:
     DebugLevel: debug
     LogFile: /apps/slurm/log/slurmdbd.log
     PidFile: /run/slurm/slurmdbd.pid
-
-  SlurmConf:
-    AccountingStorageHost: holder3-cluster-controller
-    AccountingStorageType: accounting_storage/slurmdbd
-    ClusterName: holder3-cluster
-    ControlMachine: holder3-cluster-controller
-    ResumeFailProgram: /apps/slurm/scripts/suspend.py
-    ResumeProgram: /apps/slurm/scripts/resume.py
-    ResumeTimeout: 600
-    SchedulerType: sched/backfill
-    SelectType: select/cons_res
-    SelectTypeParameters: CR_Core_Memory
-    SelectTypeParameters: CR_Core_Memory
-    SlurmctldDebug: info
-    SlurmctldLogFile: /apps/slurm/log/slurmctld.log
-    SlurmctldPidFile: /var/run/slurm/slurmctld.pid
-    SlurmdDebug: debug
-    SlurmdLogFile: /var/log/slurm/slurmd-%n.log
-    SlurmdPidFile: /var/run/slurm/slurmd.pid
-    SlurmdSpoolDir: /var/spool/slurmd 
-    StateSaveLocation: /apps/slurm/state
-    SuspendProgram: /apps/slurm/scripts/suspend.py
-    SuspendTimeout: 60
-    SuspendTime: 120
-    SuspendTimeout: 60
-
   Controller:
+    Hostname: holder3-cluster-controller
     Project: holder3-pennbrain-upenn-edu
     ImageSource:
       - Image: bsc-compute-image
@@ -48,13 +23,12 @@ holder3-cluster:
       - holder
     Labels:
       billing-project: holder3-pennbrain-upenn-edu
-      origin: file
     Nfs:
       - /apps
       - /home
       - /etc/munge
     MachineType: n1-standard-2
-    BootDiskSize: 10
+    BootDiskSize: 10G
     DiskType: pd-standard
     Zone: us-east1-b
     Region: us-east1
@@ -69,18 +43,17 @@ holder3-cluster:
     
   Partitions:
     DEFAULT:
-        PartitionParameters:
-            MaxTime: INFINITE
-            LLN: yes
-            State: UP
+        MaxTime: INFINITE
+        LLN: yes
+        State: UP
         Nodes:
-          - NodeName: DEFAULT
-          - State: CLOUD
-          - Sockets: 1
-          - CoresPerSocket: 1
-          - ThreadsPerCore: 1
-          - RealMemory: 3000
-          - State: UNKNOWN
+            Name: DEFAULT
+            State: CLOUD
+            Sockets: 1
+            CoresPerSocket: 1
+            ThreadsPerCore: 1
+            RealMemory: 3000
+            State: UNKNOWN
 
         InstanceParameters:
             ImageSource:
@@ -89,7 +62,7 @@ holder3-cluster:
             Region: us-east1
             Zone: us-east1-b
             Preemptible: True
-            BootDiskSize: 10
+            BootDiskSize: 10G
             DiskType: pd-standard
             MachineType: n1-standard-2
             NetworkPath: projects/pennbrain-host-3097383fff/global/networks/bsc-host-network
@@ -103,14 +76,13 @@ holder3-cluster:
             GpuCount: 0
 
     debug:
-        PartitionParameters:
-            Default: YES
+        Default: YES
         Nodes:
-          - NodeName: holder3-cluster-compute[0-2]
+            NodeName: holder3-cluster-compute[0-2]
 
         InstanceParameters:
             Project: holder3-pennbrain-upenn-edu
-            BootDiskSize: 10
+            BootDiskSize: 10G
             DiskType: pd-standard
             MachineType: n1-standard-2
             Preemptible: True
@@ -123,10 +95,10 @@ holder3-cluster:
 
     debug2:
         Nodes:
-          - NodeName: debug2-compute[0-2]
+            NodeName: debug2-compute[0-2]
 
         InstanceParameters:
-            Project: holder3a-pennbrain-upenn-edu
+            Project: holder3-pennbrain-upenn-edu
             Tags:
               - compute
               - holder
