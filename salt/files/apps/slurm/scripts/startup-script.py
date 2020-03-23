@@ -285,7 +285,9 @@ After=time-sync.target
 [Service]
 Type=forking
 ExecStart=/usr/sbin/munged --num-threads=10
-PIDFile=/var/run/munge/munged.pid
+RuntimeDirectory=slurm
+RuntimeDirectoryMode=755
+PIDFile=/run/munge/munged.pid
 User=munge
 Group=munge
 Restart=on-abort
@@ -828,7 +830,9 @@ Type=forking
 EnvironmentFile=-/etc/sysconfig/slurmctld
 ExecStart={prefix}/sbin/slurmctld $SLURMCTLD_OPTIONS
 ExecReload=/bin/kill -HUP $MAINPID
-PIDFile=/var/run/slurm/slurmctld.pid
+RuntimeDirectory=slurm
+RuntimeDirectoryMode=755
+PIDFile=/run/slurm/slurmctld.pid
 
 [Install]
 WantedBy=multi-user.target
@@ -850,7 +854,9 @@ Type=forking
 EnvironmentFile=-/etc/sysconfig/slurmdbd
 ExecStart={prefix}/sbin/slurmdbd $SLURMDBD_OPTIONS
 ExecReload=/bin/kill -HUP $MAINPID
-PIDFile=/var/run/slurm/slurmdbd.pid
+RuntimeDirectory=slurm
+RuntimeDirectoryMode=755
+PIDFile=/run/slurm/slurmdbd.pid
 
 [Install]
 WantedBy=multi-user.target
@@ -879,7 +885,9 @@ Type=forking
 EnvironmentFile=-/etc/sysconfig/slurmd
 ExecStart={prefix}/sbin/slurmd $SLURMD_OPTIONS
 ExecReload=/bin/kill -HUP $MAINPID
-PIDFile=/var/run/slurm/slurmd.pid
+RuntimeDirectory=slurm
+RuntimeDirectoryMode=755
+PIDFile=/run/slurm/slurmd.pid
 KillMode=process
 LimitNOFILE=51200
 LimitMEMLOCK=infinity
