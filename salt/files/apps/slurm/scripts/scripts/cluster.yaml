@@ -126,7 +126,7 @@ holder3-cluster:
           - NodeName: debug2-compute[0-2]
 
         InstanceParameters:
-            Project: holder3a-pennbrain-upenn-edu
+            Project: holder3-pennbrain-upenn-edu
             Tags:
               - compute
               - holder
