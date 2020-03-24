@@ -1,0 +1,12 @@
+[Unit]
+Description=Set up BSC Image from ClusterConfig
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/fixbsccomputeimage
+RemainAfterExit=true
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target
