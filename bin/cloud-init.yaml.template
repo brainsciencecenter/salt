@@ -1,0 +1,16 @@
+#cloud-config
+groups:
+  - foogroup
+
+salt_minion:
+    pkg_name: 'salt-minion'
+    service_name: 'salt-minion'
+    config_dir: '/etc/salt'
+    conf:
+        master: salt.cfn.upenn.edu
+        hash_type: sha256
+        id: ${InstanceName}
+    public_key: |
+${PublicKey}
+    private_key: |
+${PrivateKey}

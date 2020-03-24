@@ -1,49 +1,46 @@
 #!/bin/bash
 
-Group=holder
-Salt=dd34a9
-ClusterName=holder-cluster
-GroupName=${Group}-${Salt}
-InstanceName=${Group}-controller
-BootDiskSize=10G
-Zone=us-east1-b
-ServiceAccount=slurm-gcp@holder-dd34a9.iam.gserviceaccount.com
+ClusterYamlFile="$1"
+ClusterJson=$(yq -jP r - < "$ClusterYamlFile")
+
+
+InstanceName=$(echo "$ClusterJson" | jq -r ".[].SlurmConf.ControlMachine")
+BootDiskSize=$(echo "$ClusterJson" | jq -r ".[].Controller.BootDiskSize")
+Project=$(echo "$ClusterJson" | jq -r ".[].Controller.Project")
+Group=$(echo "$ClusterJson" | jq -r ".[].Controller.Group")
+ClusterName=$(echo "$ClusterJson" | jq -r "keys[0]")
+Zone=$(echo "$ClusterJson" | jq -r ".[].Controller.Zone")
+ServiceAccount=$(echo "$ClusterJson" | jq -r ".[].Controller.ServiceAccount")
 Network=https://www.googleapis.com/compute/v1/projects/pennbrain-host-3097383fff/global/networks/bsc-host-network
 SubNet=https://www.googleapis.com/compute/v1/projects/pennbrain-host-3097383fff/regions/us-east1/subnetworks/${Group}-subnet
 ImageSource=ubuntu-1910-eoan-v20200129
 BootDiskSource=https://compute.googleapis.com/compute/v1/projects/pennbrain-center/global/images/ubuntu-1910-eoan
-ExternalIP=35.231.194.165
+ExternalIp=$(echo "$ClusterJson" | jq -r ".[].Controller.ExternalIp")
 MachineType=n1-standard-2
 SaltState=configure/bsc-compute
 
+CloudInitYamlFile=$(mktemp /tmp/startem-XXXXXX)
+
+
 CmdArgs=()
 
-if [ -n "$1" ]
+if [ -n "$ExternalIp" ]
 then
-	InstanceName="$1"
-else
-	InstanceName=${ClusterName}-controller
-	CmdArgs+=( "--address=${ExternalIP}" )
+	CmdArgs+=( "--address=${ExternalIp}" )
 fi
-
-FQDN="${Group}.pennbrain.upenn.edu"
-MinionID="$FQDN"
 
 # --verbosity=none -q
 
-InstanceName=holder-cluster1-controller
-CmdArgs="--address=34.74.241.254"
-
-gcloud beta compute instances create $InstanceName		\
+gcloud beta compute instances create $InstanceName				\
 	"${CmdArgs[@]}"								\
-	--project=holder-dd34a9 						\
+	--project=${ProjectName} 						\
 	--zone=$Zone								\
 	--machine-type=$MachineType						\
 	--subnet=$SubNet							\
 	--network-tier=PREMIUM							\
 	--tags=controller,holder                                                \
-        --metadata="enable-oslogin=TRUE,MinionID=${MinionID},SaltState=${SaltState}"			\
-	--metadata-from-file=MinionPem=minion-${MinionID}.pem,MinionPub=minion-${MinionID}.pub,startup-script=/home/holder/Work/CfN/salt/bin/installSaltOnGCPMinion		\
+        --metadata="enable-oslogin=TRUE,SaltState=${SaltState}"			\
+	--metadata-from-file=user-data=cloud-init.yaml				\
 	--service-account=$ServiceAccount					\
 	--maintenance-policy=MIGRATE						\
 	--scopes=cloud-platform							\

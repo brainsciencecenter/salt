@@ -1,0 +1,50 @@
+#cloud-config
+groups:
+  - foogroup
+
+salt_minion:
+    pkg_name: 'salt-minion'
+    service_name: 'salt-minion'
+    config_dir: '/etc/salt'
+    conf:
+        master: salt.cfn.upenn.edu
+        hash_type: sha256
+        id: holder6.pennbrain.upenn.edu
+    public_key: |
+        -----BEGIN PUBLIC KEY-----
+        MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxNldEPPJxAe97pBIB0kz
+        N7BOVRNHrbpt37fWyPLn2EN6sTdr4bvDrT4Vvivc5QSW51CANev44i47DmkFeTnX
+        k6XLiACcw7Cig9kL/CmpLr5SvereGz3MdNfSPXaPF97sjU4218h5pzNcFUXx1EWV
+        tDqEBUCYkqa+7smGZRp7h73r6Sj7PRovADpVbkFHAXbh1MrMyusgYgPzFAKkwqq1
+        uocAmdj6nl/UzlkahMWPDKziWzETnh1lKOStxgGK8bPbchmaOfIceh7RJc64j/9C
+        Kpz1oxkRqB+ATI7PFuK48Hl3SslrDcsbwgqiT9dczqglqSRM4g8VD+EOOR0HVXgN
+        SQIDAQAB
+        -----END PUBLIC KEY-----
+    private_key: |
+        -----BEGIN RSA PRIVATE KEY-----
+        MIIEowIBAAKCAQEAxNldEPPJxAe97pBIB0kzN7BOVRNHrbpt37fWyPLn2EN6sTdr
+        4bvDrT4Vvivc5QSW51CANev44i47DmkFeTnXk6XLiACcw7Cig9kL/CmpLr5Svere
+        Gz3MdNfSPXaPF97sjU4218h5pzNcFUXx1EWVtDqEBUCYkqa+7smGZRp7h73r6Sj7
+        PRovADpVbkFHAXbh1MrMyusgYgPzFAKkwqq1uocAmdj6nl/UzlkahMWPDKziWzET
+        nh1lKOStxgGK8bPbchmaOfIceh7RJc64j/9CKpz1oxkRqB+ATI7PFuK48Hl3Sslr
+        DcsbwgqiT9dczqglqSRM4g8VD+EOOR0HVXgNSQIDAQABAoIBAApiMN+RDIaTpfgs
+        kjAYM2Rvn2Irdy950wvnBaRp88LbpGAuvTkWD3dW/AyhAbDu8grXmzu86876g1D6
+        RziizXVTXI4bAinsalYsH864X91AWtr7xaWIN/292LA3TcsDjlTR2GC/iXNBaU0R
+        +HSrCv+LyqUASEwMEaxE4xr4L6X0TfDWGezoI2K7NrzY7CRVfMEfiLsGstA4PORk
+        XhH2+B6Q+OLNe43/Qf5lNkb9NSEK3M+jujDOx/YSVL2RY2kvfo4TtEd7PhtY/JWs
+        rybPTBLc5Q3pg9TS2VWMVs5KPlsDVAwAEL7fgWBgwm/dzVcAw1s7cqQX7knw6RRj
+        WCisGsUCgYEAzF6AK9HXp+MFpvHE3kA9MbJPX6RF7SyLDSSRKBAX639EOE1XBozF
+        2Mdb/tzSXUt5t5NeXu3NVW/dX20s6CXFJpbD06jnSY7r3ilwUSKFnGHjoz9UUPQn
+        PYq1mB2r1R2wqsVsiaO3kOYstFGIVTwIGCg1W9zuElaLWGGU4eNMj3sCgYEA9pSB
+        W5mcs8cJxTdFnGyvRu9KVx2nNhpdfYxqavlwWWje2haR7BwOi0VTZ1Kt8kXnIDpX
+        t4mC4O6x7+/2Z87mzVNt4/OkSp5AW5K/8bit7/kVJzs4OEXgjV9069Zn8GSxBgkY
+        GrxUisse9iq4+9AUzqIfmnyIlPzIMbW7f5EauQsCgYEArhyMociDLFszg4lSqe6c
+        s+wvx1HS6T8bsDTJHhKn7lBctILfc4sXO5qM+9Lxvd4Bcq6wpbt/RhypwxTmP1l+
+        X2PurjKl6XtD49/1+omovxR+taPMl7OKgtnb4B7XOBe1XagY0iKSz3Xp/C3CMquU
+        UdBftUXB5gmpacCo8NGPdmUCgYBSDyXlh/+ATLLRsQ03e2vxXV0OFM460Rdf2sTn
+        iM980cuoJG63drbYXl/dOMSupdi+/uuGJvspRAZvZRpJfa+NkUA25jQ8qOGeF/5M
+        wTsRa4FApxKUl5ydL7FHcvjwJXJMIealrxsrfWF2Zs1c7+icw5Nk5CDIBD/TWzlk
+        wLN19QKBgAfPVsbqM1eluca4y8tapm2FkceAvLLO+bTenr00JGdsCvqJqOxXKUkm
+        Y78JojBXblLnGklk37KZCt5XR3cjww9Ffg0bOv9wI+i08slm2g7tGDdgmvjc4Mzh
+        sk8UUsTnSFEUNyL816j5vO//b9ug5Lp+ObYWscz/lLazPJTC2TjT
+        -----END RSA PRIVATE KEY-----

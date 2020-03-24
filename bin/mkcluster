@@ -92,6 +92,7 @@ echo $AdminFolderId
 echo $VPCNetworkProjectId
 echo $SubnetRange
 
+FQDN=${Group}.${Domain}
 Salt=$(echo "$Domain" | sed 's/\./-/g')
 
 # Project IDs must start with a lowercase letter and can have lowercase ASCII letters, digits or hyphens.
@@ -125,10 +126,11 @@ mkFolder() {
     then
 	echo "$FolderJson" | jq -r '.[] | select( .displayName | match("'"${Group}"'"))'
     else
+	# resourc-manager insists on spatting updates to stderr
 	gcloud resource-manager folders create \
 	       --display-name="$Group" \
 	       --folder="$ParentFolderId" \
-	       --format=json 2>&1
+	       --format=json 
     fi
 }
 
@@ -154,8 +156,8 @@ function mkProject() {
 	 ProjectName="$1"
 	 FolderId="$2"
 
-	 DeletingProjectsJson=$(gcloud projects list --filter='lifecycleState:DELETE_REQUESTED' --format json)
-	 ActiveProjectsJson=$(gcloud projects list --filter='lifecycleState:ACTIVE' --format json)
+	 DeletingProjectsJson=$(gcloud projects list --filter="lifecycleState:DELETE_REQUESTED AND parent.id:${FolderId}" --format json)
+	 ActiveProjectsJson=$(gcloud projects list --filter="lifecycleState:ACTIVE AND parent.id:${FolderId}" --format json)
 
 	 if echo "$DeletingProjectsJson" | jq -r '.[].projectId' | grep -q "^${ProjectName}$"
 	 then
@@ -215,6 +217,7 @@ addProjectToVPCNetwork () {
     local ProjectId="$1"
     local VPCProjectId="$2"
     
+    # *** This didn't work for several minutes - like 5, then added through the gui, then removed, then was able to add again.
     gcloud compute shared-vpc associated-projects add "$ProjectId" --host-project="$VPCProjectId" --format json
 }
 
@@ -234,7 +237,7 @@ function mkServiceAccount {
 }
 
 addRolesToServiceAccount () {
-    local ServiceAccount="$1"
+    local ServiceAccountEmail="$1"
     local FolderId="$2"
     local AdminFolderId="$3"
     local Roles="
@@ -244,8 +247,8 @@ addRolesToServiceAccount () {
     "
     for role in $Roles
     do
-	gcloud alpha resource-manager folders add-iam-policy-binding "$FolderId"  --member "serviceAccount:${ServiceAccount}" --role "${role}"
-	gcloud alpha resource-manager folders add-iam-policy-binding "$AdminFolderId"  --member serviceAccount:${ServiceAccount}" --role "${role}"
+	gcloud alpha resource-manager folders add-iam-policy-binding "$FolderId"  --member "serviceAccount:${ServiceAccountEmail}" --role "${role}"
+	gcloud alpha resource-manager folders add-iam-policy-binding "$AdminFolderId"  --member "serviceAccount:${ServiceAccountEmail}" --role "${role}"
     done
 
 }
@@ -329,6 +332,21 @@ addServices () {
 }
 
 
+mkExternalIp () {
+    ProjectName="$1"
+    Region="$2"
+
+    ExternalIpJson=$(gcloud compute addresses list --project "$ProjectName" --format json | jq '.[] | select(.name == "'"$ProjectName"'")')
+    if [ -n "$ExternalIpJson" ]
+    then
+	echo "$ExternalIpJson"
+    else
+	gcloud compute addresses create holder6-pennbrain-upenn-edu  --project "$ProjectName" --region "$Region" --format json
+    fi
+}
+
+    
+
 # tear down -- have to leave the extra disk and snapshots
 
 # *** Fix
@@ -341,11 +359,10 @@ addServices () {
 # + update resume.py and cloud-init
 
 
-
 if [ "$CmdName" == mkcluster ]
 then
     # create folder for cluster
-    FolderId=$(mkFolder "$ParentFolderId" "$Group" | jq -r '.name' | sed 's,folders/,,')
+    FolderId=$(mkFolder "$ParentFolderId" "$Group" | jq -r '.name' | cut -f 2 -d /)
     echo "$FolderId"
     listFolder "$FolderId"
 
@@ -357,14 +374,39 @@ then
     # add project to pennbrain-host-?? vpc-network
     addProjectToVPCNetwork "$ProjectName" "$VPCNetworkProjectId"
 
-    mkServiceAccount "$ServiceAccountName" "$ProjectName"
-    addRolesToServiceAccount "$ServiceAccountName" "$FolderId" "$AdminFolderId"
+    ServiceAccountJson=$(mkServiceAccount "$ServiceAccountName" "$ProjectName")
+    ServiceAccountEmail=$(echo "$ServiceAccountJson" | jq -r ".email")
+    addRolesToServiceAccount "$ServiceAccountEmail" "$FolderId" "$AdminFolderId"
 
     addServices "$ProjectName"
+    addServices "$VPCNetworkProjectId"
 
     ReservedIPAddress=$(mkReservedIPAddress "$ProjectName" "$ProjectName" "$Region")
 
     mkrouter "$RouterName" "$RouterNatName" "$VPCNetworkProjectId" "$VPCNetworkName" "$SubnetName" "$RouterNatName"
+
+    ClusterName=${Group}-cluster
+    ControllerMachine=${ClusterName}-controller
+
+    ExternalIpJson=$(mkExternalIp "$ProjectName" "$Region")
+    ExternalIp=$(echo "$ExternalIpJson" | jq -r '.address')
+
+    cat <<EOF
+BillingAccountId=$BillingAccountId
+ClusterName=${Group}-cluster
+FolderId=${FolderId}
+Group=${Group}
+SlurmDir=/apps/slurm
+DbdHost=$ControllerMachine
+RunDir=/run/slurm
+ControllerMachine=$ControllerMachine
+ProjectName=$ProjectName
+FQDN=$FQDN
+VPCNetworkProjectId=${VPCNetworkProjectId}
+VPCNetworkName=$VPCNetworkName
+ExternalIp=${ExternalIp}
+Subnet=$SubnetName
+EOF
 
 elif [ "$CmdName" == rmcluster ]
 then
