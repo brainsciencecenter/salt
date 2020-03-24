@@ -14,6 +14,12 @@ base:
   'bfb.cfn.upenn.edu':
     - hosts.bfb_cfn_upenn_edu
 
+  'holder3.pennbrain.upenn.edu':
+    - hosts.holder3-pennbrain-upenn-edu
+
+  'holder6.pennbrain.upenn.edu':
+    - hosts.holder6-pennbrain-upenn-edu
+
   'picsl-huron.pmacs.upenn.edu':
     - hosts.picsl-huron_pmacs_upenn_edu
 

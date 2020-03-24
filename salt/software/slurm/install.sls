@@ -2,7 +2,23 @@
 {% set SlurmDir = AppsDir + '/slurm' %}
 {% set DownloadDir = '/apps/slurm/src' %}
 {% set SrcDir = DownloadDir + '/slurm-19.05.5' %}
-{% set ClusterName = 'holder-cluster' %}
+
+{% set AccountingStorageType = pillar.get('slurm:AccountStorageType', 'accounting_storage/slurmdbd') %}
+{% set ClusterName = pillar.get('slurm:ClusterName', 'holder3-cluster') %}
+{% set ControlMachine = pillar.get('slurm:ControlMachine', 'holder3-cluster-controller') %}
+{% set SchedulerType = pillar.get('slurm:SchedulerType', 'sched/backfill') %}
+{% set SlurmctldDebug = pillar.get('slurm:SlurmctldDebug', 'debug') %}
+{% set SlurmctldLogFile = pillar.get('slurm:SlurmctldLogFile', '/apps/slurm/log/slurm.log') %}
+{% set SlurmDebug = pillar.get('slurm:SlurmDebug', 'debug') %}
+{% set SlurmdLogFile = pillar.get('slurm:LogFile', '/apps/slurm/log/slurm.log') %}
+{% set JobCompType = pillar.get('slurm:Nodes', 'jobcomp/none') %}
+{% set Nodes = pillar.get('slurm:', 'NodeName=linux[1-32] Procs=1 State=UNKNOWN') %}
+{% set Partitions = pillar.get('slurm:Partitions', 'PartitionName=debug Nodes=ALL Default=YES MaxTime=INFINITE State=UP') %}
+
+{% set DbdHost = pillar.get('slurm:DbdHost', 'holder3-cluster-controller') %}
+{% set DbdDebugLevel = pillar.get('slurm:DbdDebugLevel', 'debug') %}
+{% set DbdLogFile = pillar.get('slurm:DbdLogFile', '/apps/slurm/log/slurmdbd.log') %}
+{% set DbdPidFile = pillar.get('slurm:DbdPidFile', '/var/run/slurm/slurmdbd.pid') %}
 {% set BuildDir = SrcDir + '/build' %}
 {% set SlurmRootDir = '/apps/slurm/slurm-19.05.5' %}
 {% set SlurmCurrent = '/apps/slurm/current' %}
@@ -105,33 +121,33 @@ InstallSlurm:
     - mode: 644
     - template: jinja
     - defaults:
-        AccountingStorageType: accounting_storage/slurmdbd
-        ClusterName: "holder-cluster"
-        ControlMachine: "holder-cluster-controller"
-        SchedulerType: "sched/backfill"
-        SlurmctldDebug: "info"
-        SlurmctldLogFiile: "/apps/slurm/log/slurm.log"
-        SlurmDebug: "info"
-        SlurmdLogFile: "/apps/slurm/log/slurm.log"
-        JobCompType: "jobcomp/none"
-        Nodes: "NodeName=linux[1-32] Procs=1 State=UNKNOWN"
-        Partitions: "PartitionName=debug Nodes=ALL Default=YES MaxTime=INFINITE State=UP"
+        AccountingStorageType: {{ AccountingStorageType }}
+        ClusterName: {{ ClusterName }}
+        ControlMachine: {{ ControlMachine }}
+        SchedulerType: {{ SchedulerType }}
+        SlurmctldDebug: {{ SlurmctldDebug }}
+        SlurmctldLogFile: {{ SlurmctldLogFile }}
+        SlurmDebug: {{ SlurmDebug }}
+        SlurmdLogFile: {{ SlurmdLogFile }}
+        JobCompType: {{ JobCompType }}
+        Nodes: {{ Nodes }}
+        Partitions: {{ Partitions }}
 
 
-#{{ SlurmCurrentEtc }}/slurmdbd.conf:
-#  file.managed:
-#    - source: salt://{{ slspath }}/slurmdbd.conf.jinja
-#    - user: root
-#    - group: root
-#    - mode: 644
-#    - template: jinja
-#    - defaults:
-#        DbdHost: "holder"
-#        DbdDebugLevel: "info"
-#        DbdLogFile: "/apps/slurm/log/slurmdbd.log"
-#        DbdPidFile: "/var/run/slurm/slurmdbd.pid"
-#
-#
+{{ SlurmCurrentEtc }}/slurmdbd.conf:
+  file.managed:
+    - source: salt://{{ slspath }}/slurmdbd.conf.jinja
+    - user: root
+    - group: root
+    - mode: 644
+    - template: jinja
+    - defaults:
+        DbdHost: {{ DbdHost }}
+        DbdDebugLevel: {{ DbdDebugLevel }}
+        DbdLogFile: {{ DbdLogFile }}
+        DbdPidFile: {{ DbdPidFile }}
+
+
 #{{ AppsDir }}/slurm/state:
 #  file.directory:
 #    - user: slurm
@@ -165,20 +181,20 @@ InstallSlurm:
         SlurmCurrent: {{ SlurmCurrent }}
         SlurmRun: {{ SlurmRun }}
 
-#/etc/systemd/system/slurmdbd.service:
-#  file.managed:
-#    - source: salt://{{ slspath }}/slurmdbd.service.jinja
-#    - name: 
-#    - user: root
-#    - group: root
-#    - mode: 644
-#    - watch:
-#        - file: {{ SlurmCurrentEtc }}/slurmdbd.conf
-#    - template: jinja
-#    - defaults:
-#        SlurmCurrent: {{ SlurmCurrent }}
-#        SlurmRun: {{ SlurmRun }}
-#
+/etc/systemd/system/slurmdbd.service:
+  file.managed:
+    - source: salt://{{ slspath }}/slurmdbd.service.jinja
+    - name: 
+    - user: root
+    - group: root
+    - mode: 644
+    - watch:
+        - file: {{ SlurmCurrentEtc }}/slurmdbd.conf
+    - template: jinja
+    - defaults:
+        SlurmCurrent: {{ SlurmCurrent }}
+        SlurmRun: {{ SlurmRun }}
+
 #munge.service:
 #  service.running:
 #    - enable: True
