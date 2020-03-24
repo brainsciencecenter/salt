@@ -19,7 +19,6 @@ ${ClusterName}:
     ControlMachine: ${ControllerMachine}
     ResumeFailProgram: ${SlurmDir}/scripts/suspend.py
     ResumeProgram: ${SlurmDir}/scripts/resume.py
-    ResumeTimeout: 600
     SchedulerType: sched/backfill
     SelectType: select/cons_res
     SelectTypeParameters: CR_Core_Memory

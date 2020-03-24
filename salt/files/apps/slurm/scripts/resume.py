@@ -237,7 +237,7 @@ def create_instance(compute, project, zone, instance_type, instance_name,
             ]
         }],
 
-        'tags': { 'items': pyjq.all('.InstanceParameters.Tags', Partition)} ,
+        'tags': { 'items': pyjq.all('.InstanceParameters.Tags', Partition)[0]} ,
 
         'metadata': {
             'items': [{
@@ -326,8 +326,9 @@ def create_instance(compute, project, zone, instance_type, instance_name,
             NETWORK_TYPE : net_type
         }]
 
-    EXTERNAL_IP  = pyjq.all('.InstanceParameters.ExternalIP', Partition)
-    if EXTERNAL_IP:
+    EXTERNAL_IP  = pyjq.all('.InstanceParameters.ExternalIP | select(. != null)', Partition)
+    print("EXTERNAL_IP = ",EXTERNAL_IP)
+    if (len(EXTERNAL_IP) > 0):
         config['networkInterfaces'][0]['accessConfigs'] = [
             {'type': 'ONE_TO_ONE_NAT', 'name': 'External NAT'}
         ]

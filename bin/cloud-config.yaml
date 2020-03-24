@@ -1,0 +1,21 @@
+#cloud-config
+users:
+  - name: munge
+    uid: 1100
+    gecos: Munge System User
+    homedir: /nonexistent
+    primary_group: munge
+    shell: /usr/sbin/nologin 
+  
+  - name: slurm
+    uid: 1101
+    gecos: Slurm System User
+    homedir: /var/lib/slurm
+    primary_group: slurm
+    shell: /bin/bash
+  
+groups:
+  - syslog
+  - munge
+  - docker: [ holder, srdas ]
+  - slurm
