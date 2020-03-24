@@ -4,56 +4,82 @@
 # Nothing else should have dashes
 # 
 
-holder3-cluster:
+${ClusterName}:
   SlurmDbd:
-    SlurmDbdFile: /apps/slurm/current/slurmdbd.conf
-    DbdHost: holder3-cluster-controller
+    SlurmDbdFile: ${SlurmDir}/current/slurmdbd.conf
+    DbdHost: ${DbdHost}
     DebugLevel: debug
-    LogFile: /apps/slurm/log/slurmdbd.log
-    PidFile: /run/slurm/slurmdbd.pid
+    LogFile: ${SlurmDir}/log/slurmdbd.log
+    PidFile: ${RunDir}/slurmdbd.pid
+
+  SlurmConf:
+    AccountingStorageHost: ${ControllerMachine}
+    AccountingStorageType: accounting_storage/slurmdbd
+    ClusterName: ${ClusterName}
+    ControlMachine: ${ControllerMachine}
+    ResumeFailProgram: ${SlurmDir}/scripts/suspend.py
+    ResumeProgram: ${SlurmDir}/scripts/resume.py
+    ResumeTimeout: 600
+    SchedulerType: sched/backfill
+    SelectType: select/cons_res
+    SelectTypeParameters: CR_Core_Memory
+    SlurmctldDebug: info
+    SlurmctldLogFile: ${SlurmDir}/log/slurmctld.log
+    SlurmctldPidFile: ${RunDir}/slurmctld.pid
+    SlurmdDebug: debug
+    SlurmdLogFile: /var/log/slurm/slurmd-%n.log
+    SlurmdPidFile: ${RunDir}/slurmd.pid
+    SlurmdSpoolDir: /var/spool/slurmd 
+    StateSaveLocation: ${SlurmDir}/state
+    SuspendProgram: ${SlurmDir}/scripts/suspend.py
+    SuspendTimeout: 60
+    SuspendTime: 120
+
   Controller:
-    Hostname: holder3-cluster-controller
-    Project: holder3-pennbrain-upenn-edu
+    Project: ${ProjectName}
+    FolderId: ${FolderId}
+    Group: ${Group}
+    BillingAccountId: ${BillingAccountId}
     ImageSource:
       - Image: bsc-compute-image
         Project: pennbrain-center
-    MinionId: holder3.pennbrain.upenn.edu
+    MinionId: ${FQDN}
     Tags:
       - controller
-      - holder
     Labels:
-      billing-project: holder3-pennbrain-upenn-edu
+      billing-project: ${ProjectName}
     Nfs:
       - /apps
       - /home
       - /etc/munge
     MachineType: n1-standard-2
-    BootDiskSize: 10G
+    BootDiskSize: 20
     DiskType: pd-standard
     Zone: us-east1-b
     Region: us-east1
-    ServiceAccount: slurm-user@holder3-pennbrain-upenn-edu.iam.gserviceaccount.com
-    ExternalIp: 35.196.101.101
-    Network: bsc-host-network
-    Subnet: holder3-subnet
-    SharedVPCHostProj: pennbrain-host-3097383fff
-    VPCSubnet: holder3-subnet
+    ServiceAccount: slurm-user@${ProjectName}.iam.gserviceaccount.com
+    ExternalIp: ${ExternalIp}
+    Network: ${VPCNetworkName}
+    Subnet: ${Subnet}
+    VPCNetworkProjectId: ${VPCNetworkProjectId}
+    VPCNetworkName: ${Subnet}
     NetworkType: subnetwork
     UpdateNodeAddresses: True
     
   Partitions:
     DEFAULT:
-        MaxTime: INFINITE
-        LLN: yes
-        State: UP
+        PartitionParameters:
+            MaxTime: INFINITE
+            LLN: yes
+            State: UP
+            DefMemPerCPU: 2000
         Nodes:
-            Name: DEFAULT
-            State: CLOUD
-            Sockets: 1
-            CoresPerSocket: 1
-            ThreadsPerCore: 1
-            RealMemory: 3000
-            State: UNKNOWN
+          - NodeName: DEFAULT
+          - State: CLOUD
+          - Sockets: 1
+          - CoresPerSocket: 1
+          - ThreadsPerCore: 1
+          - RealMemory: 3000
 
         InstanceParameters:
             ImageSource:
@@ -62,10 +88,10 @@ holder3-cluster:
             Region: us-east1
             Zone: us-east1-b
             Preemptible: True
-            BootDiskSize: 10G
+            BootDiskSize: 10
             DiskType: pd-standard
             MachineType: n1-standard-2
-            NetworkPath: projects/pennbrain-host-3097383fff/global/networks/bsc-host-network
+            NetworkPath: projects/${VPCNetworkProjectId}/global/networks/${ClusterName}
             Labels:
               key1: value1
               key2: value2
@@ -76,33 +102,31 @@ holder3-cluster:
             GpuCount: 0
 
     debug:
-        Default: YES
+        PartitionParameters:
+            Default: YES
         Nodes:
-            NodeName: holder3-cluster-compute[0-2]
+          - NodeName: ${ClusterName}-compute[0-2]
 
         InstanceParameters:
-            Project: holder3-pennbrain-upenn-edu
-            BootDiskSize: 10G
+            Project: ${ProjectName}
+            BootDiskSize: 10
             DiskType: pd-standard
             MachineType: n1-standard-2
             Preemptible: True
             Tags:
               - compute
-              - holder
             Labels:
-              billing-project: holder3-pennbrain-upenn-edu
-              secondlabel: labelvalue
+              billing-project: ${ProjectName}
 
     debug2:
         Nodes:
-            NodeName: debug2-compute[0-2]
+          - NodeName: debug2-compute[0-2]
 
         InstanceParameters:
-            Project: holder3-pennbrain-upenn-edu
+            Project: ${ProjectName}
             Tags:
               - compute
-              - holder
             Labels:
-              billing-project: holder3-pennbrain-upenn-edu
-              secondlabel: labelvalue
+              billing-project: ${ProjectName}
+
 

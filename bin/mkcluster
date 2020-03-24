@@ -350,14 +350,11 @@ mkExternalIp () {
 # tear down -- have to leave the extra disk and snapshots
 
 # *** Fix
-# + nfs mounts
 # + munge/slurm/docker ids and groups
 # + slurm-sync-gcp to fix clustername
-# + munge startup is before nfs mount
-# + slurmd doesn't start 
-# + Should be able to use n1-standard-1 machine
 # + update resume.py and cloud-init
-
+# salt does not install python module for jq
+# cloud-config.yaml needs to be created
 
 if [ "$CmdName" == mkcluster ]
 then
