@@ -1,0 +1,171 @@
+#!/usr/bin/python3
+
+import pickle
+from apiclient import errors
+import argparse
+import os
+import json
+import re
+import sys
+import time
+import googleapiclient.discovery
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+import os, math, string, struct
+
+from xkcdpass import xkcd_password as xp
+
+SCOPES = ['https://www.googleapis.com/auth/admin.directory.user']
+
+def get_credentials():
+
+    creds = None
+    # The file token.pickle stores the user's access and refresh tokens, and is
+    # created automatically when the authorization flow completes for the first
+    # time.
+    if os.path.exists('token.pickle'):
+        with open('token.pickle', 'rb') as token:
+            creds = pickle.load(token)
+    # If there are no (valid) credentials available, let the user log in.
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                'credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0)
+        # Save the credentials for the next run
+        with open('token.pickle', 'wb') as token:
+            pickle.dump(creds, token)
+
+    return creds
+
+
+def get_directory_service():
+
+    creds = get_credentials()
+    service = googleapiclient.discovery.build('admin', 'directory_v1', credentials=creds)
+
+    return service
+
+
+def update_user_posix_credentials(user_email, home_dir, username, shell, uid, gid, service):
+
+    user = service.users().get(userKey=user_email).execute()
+
+    if ('posixAccounts' in user.keys()):
+        posix_account = user['posixAccounts'][0]
+    else :
+        print( 'No POSIX account information found. Creating POSIX account metadata' )
+        posix_account = {
+            "systemId": "",
+            "primary": True,
+            "operatingSystemType": "unspecified"
+        }
+
+    print("Initial posixAccount info", json.dumps(posix_account))
+
+    if home_dir:
+        posix_account['homeDirectory'] = home_dir
+
+    if username:
+        posix_account['username'] = username
+
+    if shell:
+        posix_account['shell'] = shell
+
+    if uid:
+        posix_account['uid'] = str(uid)
+
+    if gid:
+        posix_account['gid'] = str(gid)
+
+    user['posixAccounts'] = [ posix_account ]
+
+    results = service.users().update(userKey=user_email, body=user).execute()
+
+    return(results)
+
+def generate_password():
+    wordfile = xp.locate_wordfile()
+    mywords = xp.generate_wordlist(wordfile=wordfile, min_length=5, max_length=8)
+    mywords = [x.capitalize() for x in mywords]
+    Password = xp.generate_xkcdpassword(mywords, numwords=4, delimiter='')
+
+    return(Password)
+
+#
+# Call as
+#  bugCheck gmcfoo5@pennbrain.upenn.edu
+#
+
+def main():
+    parser = argparse.ArgumentParser(description='demo for problems creating/adding posixAccounts information')
+    parser.add_argument('user_email')
+    args = parser.parse_args()
+
+    service = get_directory_service()
+
+    email = args.user_email
+    username = re.sub('@.*$','',email)
+
+    posix_account = {
+        "homeDirectory": '/home/'+username,
+        "username": username,
+        "uid": 40001,
+        "gid": 40001,
+        "shell": "/bin/bash",
+        "primary": True,
+        "operatingSystemType": "unspecified"
+    }
+
+    try :
+         user = service.users().get(userKey=email).execute()
+ 
+         print( 'User "{}" already exists'.format(email) )
+
+         user["posixAccounts"] = [ posix_account ]
+         try:
+             results = service.users().update(userKey=email, body=user).execute()
+
+         except errors.HttpError as e:
+             print( 'updating user {} failed with'.format(email, e))
+             sys.exit(1)
+
+    except errors.HttpError as e:
+        print( 'Creating new user "{}"'.format(email) )
+        user = {
+            'name': {
+                'familyName': username,
+                'givenName': username
+            },
+            'primaryEmail': email,
+            'password': generate_password()
+        }
+ 
+
+        user['posixAccounts'] = [ posix_account ]
+
+        print(json.dumps( user, indent=2 ))
+
+        try :
+            results = service.users().insert(body=user).execute()
+            print(json.dumps( results ))
+
+        except errors.HttpError as e:
+            print( 'Creating user {} failed with'.format(email, e))
+            sys.exit(1)
+
+    print("results = ", json.dumps(results,  indent=2))
+                                            
+    time.sleep(10)
+
+    user = service.users().get(userKey=email).execute()
+
+    print("real user = ", json.dumps(user,  indent=2))
+ 
+
+
+
+if __name__ == '__main__':
+    main()

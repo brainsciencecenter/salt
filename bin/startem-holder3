@@ -1,0 +1,54 @@
+#!/bin/bash
+
+Group=holder3
+Salt=pennbrain-upenn-edu
+ClusterName=holder3-cluster
+InstanceName=${Group}-controller
+BootDiskSize=10G
+Zone=us-east1-b
+ServiceAccount=slurm-user@holder3-pennbrain-upenn-edu.iam.gserviceaccount.com
+Network=https://www.googleapis.com/compute/v1/projects/pennbrain-host-3097383fff/global/networks/bsc-host-network
+SubNet=https://www.googleapis.com/compute/v1/projects/pennbrain-host-3097383fff/regions/us-east1/subnetworks/${Group}-subnet
+ImageSource=ubuntu-1910-eoan-v20200129
+BootDiskSource=projects/ubuntu-os-cloud/global/images/ubuntu-1910-eoan-v20200317
+ExternalIP=35.196.101.101
+MachineType=n1-standard-2
+SaltState=configure/bsc-compute
+Project=holder3-pennbrain-upenn-edu
+
+CmdArgs=()
+
+if [ -n "$1" ]
+then
+	InstanceName="$1"
+else
+	InstanceName=${ClusterName}-controller
+	CmdArgs+=( "--address=${ExternalIP}" )
+fi
+
+FQDN="${Group}.pennbrain.upenn.edu"
+MinionID="$FQDN"
+
+# --verbosity=none -q
+
+gcloud beta compute instances create "$InstanceName"				\
+	"${CmdArgs[@]}"								\
+	--project="$Project"	 						\
+	--zone="$Zone"								\
+	--machine-type="$MachineType"						\
+	--network-tier=PREMIUM							\
+        --network="$Network" 							\
+	--subnet="$SubNet"							\
+	--tags=controller,holder                                                \
+        --metadata="enable-oslogin=TRUE"					\
+	--metadata-from-file=user-data=cloud-init.yml				\
+	--service-account="$ServiceAccount"					\
+	--maintenance-policy=MIGRATE						\
+	--scopes=cloud-platform							\
+	--image=ubuntu-1910-eoan-v20200129					\
+	--image-project=ubuntu-os-cloud						\
+	--boot-disk-size="$BootDiskSize"					\
+	--boot-disk-type=pd-standard						\
+	--boot-disk-device-name="$InstanceName"					\
+	--reservation-affinity=any
+

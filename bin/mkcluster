@@ -1,0 +1,420 @@
+#!/bin/bash
+
+CmdName=$(basename "$0")
+
+if [ -z "$1" ]
+then
+    echo "${CmdName} missing group" 1>&2
+    exit 1
+fi
+
+
+Group="$1"
+#
+# Build/rm cluster
+#
+
+
+#OrganizationId=900475861822
+function getOrgInfo () {
+    gcloud organizations list --format json | jq -r '.[]| "\(.displayName) \(.name) \(.owner.directoryCustomerId)"' | sed 's,organizations/,,'
+}
+
+#ParentFolderId=953779295229 # pennbrain-services
+function getTopFolderInfo() {
+    local OrganizationId="$1"
+
+    gcloud resource-manager folders list --organization "$OrganizationId" --format json | jq -r '.[]|"\(.displayName) \(.name)"' | sed 's,folders/,,'
+}
+
+# BillingAccountId=010E05-389CEA-FDE7D9 # UPenn-PMACS
+function getBillingAccountId () {
+    gcloud beta billing accounts list --format json | jq -r '.[].name' | sed 's,billingAccounts/,,'
+}
+
+function getAdminFolderId () {
+    gcloud resource-manager folders list --folder 953779295229 --format json  --filter=displayName=admin | jq -r '.[].name' | sed 's,folders/,,'
+}
+
+#VPCNetworkProjectId=pennbrain-host-3097383fff
+function getVPCNetworkProjectId () {
+    local Name="$1"
+
+    gcloud projects list --filter name="$Name" --format json | jq -r '.[].projectId'
+}
+
+#gcloud compute networks list --project pennbrain-host-3097383fff --format json
+getSubnetInfo () {
+    local Project="$1"
+    local Region="$2"
+    
+    gcloud compute networks subnets list --project "$Project" --format json --filter="region:( ${Region} ) AND privateIpGoogleAccess=true"
+}
+
+#SubnetRange="10.40.0.0/16"
+getNextSubnetRange() {
+    local SubnetFormat="$1"
+    local SubnetJson="$2"
+
+    LastSubnetNumber=$(echo "$SubnetJson" | jq -r '.[].ipCidrRange' | sort | tail -n 1 | cut -f 2 -d .)
+    NextSubnetNumber=$(($LastSubnetNumber + 1))
+    NextSubnetRange=$(printf "$SubnetFormat" $NextSubnetNumber)
+
+    echo "$NextSubnetRange"
+}
+
+
+VPCNetworkProjectName=pennbrain-host
+VPCNetworkName=bsc-host-network
+Region=us-east1
+Zone=us-east1-b
+SubnetFormat="10.%d.0.0/16\n"
+RouterName="${Group}-router"
+RouterNatName="${RouterName}-nat"
+
+read -r Domain OrganizationId CustomerId <<< $(getOrgInfo)
+read -r TopFolder ParentFolderId <<< $(getTopFolderInfo "$OrganizationId")
+read -r BillingAccountId <<< $(getBillingAccountId)
+read -r AdminFolderId <<< $(getAdminFolderId)
+read -r VPCNetworkProjectId <<< $(getVPCNetworkProjectId "$VPCNetworkProjectName")
+
+SubnetJson=$(getSubnetInfo "$VPCNetworkProjectId" "$Region")
+SubnetRange=$(getNextSubnetRange "$SubnetFormat" "$SubnetJson")
+SubnetName="${Group}-subnet"
+
+echo $Domain
+echo $OrganizationId
+echo $CustomerId
+echo $TopFolder
+echo $ParentFolderId
+echo $BillingAccountId
+echo $AdminFolderId
+echo $VPCNetworkProjectId
+echo $SubnetRange
+
+FQDN=${Group}.${Domain}
+Salt=$(echo "$Domain" | sed 's/\./-/g')
+
+# Project IDs must start with a lowercase letter and can have lowercase ASCII letters, digits or hyphens.
+# Project IDs must be between 6 and 30 characters.
+ProjectName="${Group}-${Salt}"
+ProjectNameSize=$(echo "$ProjectName" | wc -c)
+if [ "$ProjectNameSize" -gt 30 ]
+then
+    echo "${ProjectName} is too long" 1>&2
+    exit 1
+fi
+
+ServiceAccountName=slurm-user
+
+echo $ProjectName
+echo $ServiceAccountName
+echo $ServiceAccountId
+
+
+#
+# create/rm folder
+# https://cloud.google.com/resource-manager/docs/creating-managing-folders
+#
+
+mkFolder() {
+    local ParentFolderId="$1"
+    local Group="$2"
+
+    FolderJson=$(gcloud resource-manager folders list --folder "$ParentFolderId" --format json)
+    if echo "$FolderJson" | jq -r '.[].displayName' | grep -q "^${Group}"
+    then
+	echo "$FolderJson" | jq -r '.[] | select( .displayName | match("'"${Group}"'"))'
+    else
+	# resourc-manager insists on spatting updates to stderr
+	gcloud resource-manager folders create \
+	       --display-name="$Group" \
+	       --folder="$ParentFolderId" \
+	       --format=json 
+    fi
+}
+
+function listFolder() {
+    local ParentFolderId="$1"
+
+    gcloud resource-manager folders list --folder "$ParentFolderId"
+}
+
+function rmFolder() {
+	 FolderId="$1"
+
+	 gcloud projects list --filter=" parent.id: '${FolderId}' " | grep -v '^PROJECT_ID' | while read Project_Id Name Project_Number
+	 do
+		echo y | gcloud projects delete "$Project_Number" 
+	done
+
+ 	 gcloud resource-manager folders delete "$FolderId"
+}
+
+# create project
+function mkProject() {
+	 ProjectName="$1"
+	 FolderId="$2"
+
+	 DeletingProjectsJson=$(gcloud projects list --filter="lifecycleState:DELETE_REQUESTED AND parent.id:${FolderId}" --format json)
+	 ActiveProjectsJson=$(gcloud projects list --filter="lifecycleState:ACTIVE AND parent.id:${FolderId}" --format json)
+
+	 if echo "$DeletingProjectsJson" | jq -r '.[].projectId' | grep -q "^${ProjectName}$"
+	 then
+	     echo "${CmdName}: $ProjectName is being deleted" 1>&2
+	     exit 1
+	 elif echo "$ActiveProjectsJson" | jq -r '.[].projectId' | grep -q "^${ProjectName}$"
+	 then
+	     echo "$ActiveProjectsJson" | jq -r '.[]|select(.name|match("^'"${ProjectName}"'"))' 
+	 else
+	     gcloud projects create --folder="$FolderId" "$ProjectName" --format json
+	 fi
+
+}
+
+rmProject () {
+    local ProjectName="$1"
+
+    echo y | gcloud projects delete "$ProjectName"
+}
+
+# attach project to billing account
+# https://cloud.google.com/sdk/gcloud/reference/alpha/billing/accounts/projects/link
+function linkProjectToBillingAccount {
+	 ProjectName="$1"
+	 BillingAccountId="$2"
+
+	 gcloud beta billing projects link "$ProjectName" --billing-account="$BillingAccountId"
+}
+
+function unlinkProjectFromBillingAccount {
+	 ProjectName="$1"
+	 BillingAccountId="$2"
+
+	 gcloud beta billing projects unlink "$ProjectName"
+}
+
+
+# create subnet for project with next address segment
+# https://cloud.google.com/sdk/gcloud/reference/compute/networks/subnets/create
+function mkSubnet {
+	 local VPCNetworkName="$1"
+	 local VPCNetworkProjectId="$2"
+	 local SubnetName="$3"
+	 local SubnetRange="$4"
+	 local SubnetJson
+
+	 SubnetJson=$(gcloud compute networks subnets list --project "$VPCNetworkProjectId" --format json)
+	 if echo "$SubnetJson" | jq -r '.[].name' | grep -q "^${SubnetName}$"
+	 then
+	     echo "$SubnetJson" | jq -r '.[] | select(.name | match("'"$SubnetName"'"))'
+	 else
+	     gcloud compute networks subnets create "$SubnetName" --project="$VPCNetworkProjectId" --range="$SubnetRange" --network="$VPCNetworkName" --enable-private-ip-google-access --format json
+	 fi
+}
+
+addProjectToVPCNetwork () {
+    local ProjectId="$1"
+    local VPCProjectId="$2"
+    
+    # *** This didn't work for several minutes - like 5, then added through the gui, then removed, then was able to add again.
+    gcloud compute shared-vpc associated-projects add "$ProjectId" --host-project="$VPCProjectId" --format json
+}
+
+# create service account
+#https://cloud.google.com/sdk/gcloud/reference/iam/service-accounts/create
+function mkServiceAccount {
+	 local ServiceAccountName="$1"
+	 local ProjectName="$2"
+
+	 ServiceAccountJson=$(gcloud iam service-accounts list --project "$ProjectName" --format json )
+	 if echo "$ServiceAccountJson" | jq -r '.[].email' | grep -q "${ServiceAccountName}@${ProjectName}\."
+	 then
+	     echo "$ServiceAccountJson" | jq -r '.[]|select(.email | match("'"${ServiceAccountName}@${ProjectName}"'"))'
+	 else
+	     gcloud iam service-accounts create "$ServiceAccountName"  --project "$ProjectName" --format json
+	 fi
+}
+
+addRolesToServiceAccount () {
+    local ServiceAccountEmail="$1"
+    local FolderId="$2"
+    local AdminFolderId="$3"
+    local Roles="
+    	  roles/editor
+	  roles/servicenetworking.networksAdmin
+	  roles/storage.objectViewer
+    "
+    for role in $Roles
+    do
+	gcloud alpha resource-manager folders add-iam-policy-binding "$FolderId"  --member "serviceAccount:${ServiceAccountEmail}" --role "${role}"
+	gcloud alpha resource-manager folders add-iam-policy-binding "$AdminFolderId"  --member "serviceAccount:${ServiceAccountEmail}" --role "${role}"
+    done
+
+}
+    
+
+# Allocate Reserved IP address
+mkReservedIPAddress () {
+    local IPAddressName="$1"
+    local ProjectName="$2"
+    local Region="$3"
+
+    IPAddressJson=$(gcloud compute addresses list --format json --project "$ProjectName")
+    if echo "$IPAddressJson" | jq -r '.[]|select(.name|match("'"$IPAddressName"'"))|.name' | grep -q "$IPAddressName"
+    then
+	echo "$IPAddressJson" | jq -r '.[]|select(.name|match("'"$IPAddressName"'")) | .address'
+	return 0
+    else
+	gcloud compute addresses create "$IPAddressName" --region "$Region" --format json --project "$ProjectName" | jq '.[].address'
+    fi
+}
+
+rmReservedIPAddress() {
+    local IPAddressName="$1"
+    local Region="$2"
+
+    echo y | gcloud compute addresses delete "$IPAddressName" --region "$Region"
+}
+
+# add service account to group?
+# add perms to service account
+# create subprojects
+# create cluster yaml template
+# spin up cluster controller
+
+# Create router and router nat
+function mkrouter {
+    local RouterName="$1"
+    local RouterNatName="$2"
+    local VPCNetworkProjectId="$3"
+    local VPCNetworkName="$4"
+    local SubnetName="$5"
+    local RouterNatName="$6"
+
+    RouterJson=$(gcloud beta compute routers  list --project pennbrain-host-3097383fff --format json | jq -r '.[]')
+    if ! (echo "$RouterJson" | jq -r 'select(.name|match("'"$RouterName"'"))|.name' | grep -q "$RouterName")
+    then
+	gcloud compute routers create "$RouterName" --project "$VPCNetworkProjectId" --network "$VPCNetworkName"
+    fi
+
+    if ! (echo "$RouterJson" | jq -r 'select(.name|match("'"$RouterName"'"))|.nats[].name' | grep -q "$RouterNatName")
+    then
+	gcloud beta compute routers nats create "$RouterNatName" --router "$RouterName" --project "$VPCNetworkProjectId" --auto-allocate-nat-external-ips --nat-custom-subnet-ip-ranges="$SubnetName"
+    fi
+    
+}
+
+# turn on compute engine api for project
+addServices () {
+    local ProjectName="$1"
+
+    local Services="
+		bigquerydatatransfer.googleapis.com
+		bigquery.googleapis.com
+		bigquerystorage.googleapis.com
+		cloudresourcemanager.googleapis.com
+		compute.googleapis.com
+		deploymentmanager.googleapis.com
+		dns.googleapis.com
+		iamcredentials.googleapis.com
+		iam.googleapis.com
+		logging.googleapis.com
+		monitoring.googleapis.com
+		oslogin.googleapis.com
+		stackdriver.googleapis.com
+   "
+
+    for i in $Services
+    do
+	gcloud services enable "$i" --project "$ProjectName"
+    done
+}
+
+
+mkExternalIp () {
+    ProjectName="$1"
+    Region="$2"
+
+    ExternalIpJson=$(gcloud compute addresses list --project "$ProjectName" --format json | jq '.[] | select(.name == "'"$ProjectName"'")')
+    if [ -n "$ExternalIpJson" ]
+    then
+	echo "$ExternalIpJson"
+    else
+	gcloud compute addresses create holder6-pennbrain-upenn-edu  --project "$ProjectName" --region "$Region" --format json
+    fi
+}
+
+    
+
+# tear down -- have to leave the extra disk and snapshots
+
+# *** Fix
+# + munge/slurm/docker ids and groups
+# + slurm-sync-gcp to fix clustername
+# + update resume.py and cloud-init
+# salt does not install python module for jq
+# cloud-config.yaml needs to be created
+
+if [ "$CmdName" == mkcluster ]
+then
+    # create folder for cluster
+    FolderId=$(mkFolder "$ParentFolderId" "$Group" | jq -r '.name' | cut -f 2 -d /)
+    echo "$FolderId"
+    listFolder "$FolderId"
+
+    mkProject "$ProjectName" "$FolderId"
+    linkProjectToBillingAccount "$ProjectName" "$BillingAccountId"
+
+    mkSubnet "$VPCNetworkName" "$VPCNetworkProjectId" "$SubnetName" "$SubnetRange"
+
+    # add project to pennbrain-host-?? vpc-network
+    addProjectToVPCNetwork "$ProjectName" "$VPCNetworkProjectId"
+
+    ServiceAccountJson=$(mkServiceAccount "$ServiceAccountName" "$ProjectName")
+    ServiceAccountEmail=$(echo "$ServiceAccountJson" | jq -r ".email")
+    addRolesToServiceAccount "$ServiceAccountEmail" "$FolderId" "$AdminFolderId"
+
+    addServices "$ProjectName"
+    addServices "$VPCNetworkProjectId"
+
+    ReservedIPAddress=$(mkReservedIPAddress "$ProjectName" "$ProjectName" "$Region")
+
+    mkrouter "$RouterName" "$RouterNatName" "$VPCNetworkProjectId" "$VPCNetworkName" "$SubnetName" "$RouterNatName"
+
+    ClusterName=${Group}-cluster
+    ControllerMachine=${ClusterName}-controller
+
+    ExternalIpJson=$(mkExternalIp "$ProjectName" "$Region")
+    ExternalIp=$(echo "$ExternalIpJson" | jq -r '.address')
+
+    cat <<EOF
+BillingAccountId=$BillingAccountId
+ClusterName=${Group}-cluster
+FolderId=${FolderId}
+Group=${Group}
+SlurmDir=/apps/slurm
+DbdHost=$ControllerMachine
+RunDir=/run/slurm
+ControllerMachine=$ControllerMachine
+ProjectName=$ProjectName
+FQDN=$FQDN
+VPCNetworkProjectId=${VPCNetworkProjectId}
+VPCNetworkName=$VPCNetworkName
+ExternalIp=${ExternalIp}
+Subnet=$SubnetName
+EOF
+
+elif [ "$CmdName" == rmcluster ]
+then
+    # Must remove the project and other resources before you can remove the folder
+    # projects can be deleted but can be undeleted for 30 days.
+    # deleting the project does not delete the associated subnet
+
+    unlinkProjectFromBilling "$ProjectName" "$BillingAccountId"
+
+    rmProject "$ProjectName"
+    
+    FolderId=$(listFolder "$ParentFolderId" | grep "^${Group} " | awk '{print $3}')
+    rmFolder "$FolderId"
+fi

@@ -1,0 +1,38 @@
+CLUSTER_NAME: 'holder-cluster'
+PROJECT: 'holder-dd34a9'
+ZONE: 'us-east1-b'
+REGION: 'us-east1'
+CPU_PLATFORM: 
+SHARED_VPC_HOST_PROJ: pennbrain-host-3097383fff
+VPC_SUBNET: holder-subnet
+DISK_SIZE_GB: '10'
+DISK_TYPE: 'pd-standard'
+STATIC_NODE_COUNT: 0
+nfs-exports:
+  - /home
+  - /apps
+  - /etc/munge
+MAX_NODE_COUNT: 10
+DEF_SLURM_ACCT: 'default'
+DEF_SLURM_USERS: 'holder'
+EXTERNAL_COMPUTE_IPS: False
+GPU_TYPE: ''
+GPU_COUNT: 0
+PREEMPTIBLE: False
+SUSPEND_TIME: 300
+VPC_NETWORK_TAGS:
+  - holder
+DEF_PART_NAME: "debug"
+CONTROL_MACHINE: holder-cluster-controller
+SLURM_VERSION: '19.05.5'
+MACHINE_TYPE: 'n1-standard-2' # e.g. n1-standard-1, n1-starndard-2
+APPS_DIR: '/apps'
+CURR_SLURM_DIR: APPS_DIR + '/slurm/current'
+MUNGE_DIR: "/etc/munge"
+MUNGE_KEY: ''
+NFS_APPS_SERVER: ''
+NFS_APPS_DIR: '/apps'
+NFS_HOME_SERVER: ''
+NFS_HOME_DIR: '/home'
+CONTROLLER_SECONDARY_DISK: False
+

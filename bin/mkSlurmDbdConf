@@ -1,0 +1,8 @@
+#!/bin/bash
+
+ClusterYamlFile=/apps/slurm/scripts/cluster.yaml
+SlurmDbdTemplateFile=/apps/slurm/scripts/slurmdbd.conf.template
+
+SlurmDbdJson=$(yq -jP r - < "$ClusterYamlFile" | jq '.[].SlurmDbd')
+(echo "$SlurmDbdJson" | jq -r 'keys[] as $k | "export \($k)=\(.[$k])"' ; echo "envsubst < ${SlurmDbdTemplateFile}") | bash
+

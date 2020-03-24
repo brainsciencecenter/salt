@@ -237,7 +237,7 @@ def create_instance(compute, project, zone, instance_type, instance_name,
             ]
         }],
 
-        'tags': { 'items': pyjq.all('.InstanceParameters.Tags', Partition)} ,
+        'tags': { 'items': pyjq.all('.InstanceParameters.Tags', Partition)[0]} ,
 
         'metadata': {
             'items': [{
@@ -458,7 +458,8 @@ def main(arg_nodes):
             raise Exception("image not ready")
         source_disk_image = image_response['selfLink']
         have_compute_img = True
-    except:
+    except Exception as e:
+        print("Main: failed find image {}/{}".format(IMAGEPROJECT, FAMILY), e)
         image_response = compute.images().getFromFamily(
             project='ubuntu-os-cloud', family='ubuntu-1910').execute()
         source_disk_image = image_response['selfLink']

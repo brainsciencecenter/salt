@@ -1,0 +1,33 @@
+holder-cluster:
+  controller:
+    minion-name: holder-controller
+    machine-type: n1-standard-2
+    boot-disk-size: 10G
+    project: holder-dd3499
+    zone: us-east1-b
+    region: us-east
+    ip-address: 35.231.194.165
+    network: bsc-host-network
+    subnet: holder-dd3499-subnet
+  nodes:
+    - DEFAULT: 
+    - compute-[00-09]: n1-standard-2
+    - n1-highmem-16-[00-09]: n1-highmem-16
+    - n1-gpu-[00-09]
+
+  partitions:
+    - small-proj-a
+        nodes: compute-[00-09]
+        billing-code: holder-proj-a
+        pre-emptible: True
+    
+    - big-proj-a
+        nodes: n1-highmem-16-[00-09]
+        billing-code: holder-proj-a
+        pre-emptible: False
+    
+    - gpu-proj-a
+        nodes: gpu-[00-09]
+        billing-code: holder-proj-a
+        pre-emptible: True
+    

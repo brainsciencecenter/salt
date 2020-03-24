@@ -1,0 +1,60 @@
+#!/bin/bash
+
+while getopts p:P:s:q arg
+do
+	case "$arg" in
+	     p|P|q|s)
+	        eval "opt_${arg}=${OPTARG:=1}"
+		;;
+	esac
+done
+
+shift $(($OPTIND - 1))
+
+ClusterConfigFile=$1
+ClusterConfigYaml=$(yq r "$ClusterConfigFile")
+ClusterName=$(echo "$ClusterConfigYaml" | grep '^[a-zA-Z].*:' | sed 's/://')
+ControllerYaml=$(echo "$ClusterConfigYaml" | yq r - "${ClusterName}.controller")
+
+function index {
+	 echo "$2" | yq r - "$1"
+}
+
+InstanceName=holder-foo
+Project=$(index project "$ControllerYaml")
+Zone=$(index zone "$ControllerYaml")
+MachineType=$(index machine-type "$ControllerYaml")
+SubNet=$(index subnet "$ControllerYaml")
+ExternalIP=$(index external-ip "$ControllerYaml")
+Tags==$(index 'tags[*]' "$ControllerYaml" | paste -sd",\n")
+ServiceAccount=$(index service-account "$ControllerYaml")
+BootDiskSize=$(index boot-disk-size "$ControllerYaml")
+MinionID=$(index minion-id "$ControllerYaml")
+ImageSource=$(index 'image-source[0]'  "$ControllerYaml")
+#=$(index  "$ControllerYaml")
+
+MinionPemFile="$opt_p"
+MinionPubFile="$opt_P"
+
+#	--address=$ExternalIP							\
+
+echo gcloud $CmdArgs beta compute instances create $InstanceName			\
+	--project=${Project}	   						\
+	--zone=$Zone								\
+	--machine-type=$MachineType						\
+	--subnet=$SubNet							\
+	--network-tier=PREMIUM							\
+	--tags=controller,holder                                                \
+	--metadata=minion-id=${MinionID}					\
+        --metadata="enable-oslogin=TRUE"					\
+	--metadata-from-file=minion-pem=${MinionPemFile},minion-pub=${MinionPubFile},startup-script=${StartupScript},slurm_suspend=${SlurmGCPDir}/suspend.py,slurm_resume=${SlurmGCPDir}/resume.py,startup-script-compute=${SlurmGCPDir}/startup-script.py,slurm-gcp-sync=${SlurmGCPDir}/slurm-gcp-sync.py,compute-shutdown=${SlurmGCPDir}/compute-shutdown,custom-compute-install=${SlurmGCPDir}/custom-compute-install,custom-controller-install=${SlurmGCPDir}/custom-controller-install,cluster-config=${SlurmGCPDir}/cluster-config.yaml	\
+	--service-account=$ServiceAccount					\
+	--maintenance-policy=MIGRATE						\
+	--scopes=cloud-platform							\
+	--image=${ImageSource}							\
+	--image-project=ubuntu-os-cloud						\
+	--boot-disk-size=$BootDiskSize						\
+	--boot-disk-type=pd-standard						\
+	--boot-disk-device-name=$InstanceName					\
+	--reservation-affinity=any
+
