@@ -1,0 +1,9 @@
+#!/bin/bash -x
+
+/usr/local/bin/fixNFSMounts
+mount -a
+systemctl daemon-reload
+systemctl restart remote-fs.target
+salt-call state.apply configure/sshd
+
+

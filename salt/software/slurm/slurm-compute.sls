@@ -37,16 +37,6 @@
         SlurmCurrent: {{ SlurmCurrent }}
         SlurmRun: {{ SlurmRun }}
 
-{% for MountPoint in NFSMounts %}
-{{ MountPoint }}:
-  mount.mounted:
-    - device: {{ SlurmControllerName }}:{{ MountPoint }}
-    - fstype: nfs
-    - mkmnt: True
-    - opts:
-        - defaults
-{% endfor %}
-
 slurmd:
   service.running:
     - enable: True

@@ -11,6 +11,7 @@ gcp-packages:
       - build-essential
       - checkinstall
       - colord
+      - cython
       - csvkit
       - docker
       - dnsutils
@@ -27,6 +28,7 @@ gcp-packages:
       - iproute2
       - jq
       - libextutils-makemaker-cpanfile-perl
+      - libgdcm-tools
       - libhwloc-dev
       - liblua5.3-dev
       - libmariadb-dev
@@ -76,7 +78,7 @@ gcp-packages:
 yq:
   snap.installed
 
-{% set Pip3Packages = [  'flywheel-sdk', 'jq', 'globre', 'tzlocal' ] %}
+{% set Pip3Packages = [ 'awscli', 'Cython', 'flywheel-sdk', 'globre', 'tzlocal', 'pyjq'] %}
 
 {% for pip3pkg in Pip3Packages %}
 {{ pip3pkg }}:

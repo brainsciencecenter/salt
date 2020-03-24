@@ -1,0 +1,32 @@
+#!/bin/bash -x
+
+function getMetadata {
+	curl -s -H "Metadata-Flavor:Google" "http://metadata.google.internal/computeMetadata/v1/instance/$1"
+}
+
+if [ -n "$1" ]
+then
+	Fstab="$1"
+else
+	Fstab="/etc/fstab"
+fi
+
+
+ClusterConfig=$(getMetadata "attributes/ClusterConfig" | yq -jP r -)
+
+ClusterController=$(echo "$ClusterConfig" | jq -r '.[].SlurmConf.ControlMachine')
+
+Hostname=$(hostname -s)
+
+if [ "$Fstab" != "/etc/fstab" -o "$ClusterController" != "$Hostname" ]
+then
+	cat "$Fstab"
+
+	sed -i -r '/\snfs\s/d' "$Fstab"
+
+	echo "$ClusterConfig" | jq -r '.[].Controller.Nfs[]' | sed 's/^.*$/'"$ClusterController"':& & nfsdefaults	0	0/' >> "$Fstab"
+
+	cat "$Fstab"
+	ls --full-time "$Fstab"
+fi
+
