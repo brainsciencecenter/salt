@@ -40,7 +40,7 @@ MACHINE_TYPE      = 'n1-standard-2' # e.g. n1-standard-1, n1-starndard-2
 PROJECT           = 'holder-dd34a9'
 ZONE              = 'us-east1-b'
 
-APPS_DIR          = '/apps'
+APPS_DIR          = '/share/apps'
 CURR_SLURM_DIR    = APPS_DIR + '/slurm/current'
 MUNGE_DIR         = "/etc/munge"
 MUNGE_KEY         = ''
@@ -53,7 +53,7 @@ EXTERNAL_COMPUTE_IPS = False
 GPU_TYPE          = ''
 GPU_COUNT         = 0
 NFS_APPS_SERVER   = ''
-NFS_APPS_DIR      = '/apps'
+NFS_APPS_DIR      = '/share/apps'
 NFS_HOME_SERVER   = ''
 NFS_HOME_DIR      = '/home'
 CONTROLLER_SECONDARY_DISK = False
@@ -130,7 +130,7 @@ def add_slurm_user():
 
 def setup_modules():
 
-    appsmfs = '/apps/modulefiles'
+    appsmfs = '/share/apps/modulefiles'
 
     if appsmfs not in open('/usr/share/modules/init/.modulespath').read():
         if INSTANCE_TYPE == 'controller' and not os.path.isdir(appsmfs):
@@ -1006,7 +1006,7 @@ def setup_sync_cronjob():
 # END setup_sync_cronjob()
 
 def setup_slurmd_cronjob():
-    #subprocess.call(shlex.split('crontab < /apps/slurm/scripts/cron'))
+    #subprocess.call(shlex.split('crontab < /share/apps/slurm/scripts/cron'))
     os.system("echo '*/2 * * * * if [ `systemctl status slurmd | grep -c inactive` -gt 0 ]; then mount -a; systemctl restart slurmd; fi' | crontab -u root -")
 # END setup_slurmd_cronjob()
 
