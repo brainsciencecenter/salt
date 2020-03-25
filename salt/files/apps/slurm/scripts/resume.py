@@ -326,9 +326,8 @@ def create_instance(compute, project, zone, instance_type, instance_name,
             NETWORK_TYPE : net_type
         }]
 
-    EXTERNAL_IP  = pyjq.all('.InstanceParameters.ExternalIP | select(. != null)', Partition)
-    print("EXTERNAL_IP = ",EXTERNAL_IP)
-    if (len(EXTERNAL_IP) > 0):
+    EXTERNAL_IP  = pyjq.all('.InstanceParameters.ExternalIP', Partition)
+    if EXTERNAL_IP:
         config['networkInterfaces'][0]['accessConfigs'] = [
             {'type': 'ONE_TO_ONE_NAT', 'name': 'External NAT'}
         ]
@@ -459,7 +458,8 @@ def main(arg_nodes):
             raise Exception("image not ready")
         source_disk_image = image_response['selfLink']
         have_compute_img = True
-    except:
+    except Exception as e:
+        print("Main: failed find image {}/{}".format(IMAGEPROJECT, FAMILY), e)
         image_response = compute.images().getFromFamily(
             project='ubuntu-os-cloud', family='ubuntu-1910').execute()
         source_disk_image = image_response['selfLink']
