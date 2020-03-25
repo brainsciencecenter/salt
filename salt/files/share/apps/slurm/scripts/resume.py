@@ -94,7 +94,7 @@ def getPartitionsConfig(ClusterConfig):
 
 SlurmDir = getMetadata('attributes/SlurmDir')
 if (not SlurmDir):
-    SlurmDir    = '/apps/slurm'
+    SlurmDir    = '/share/apps/slurm'
 
 ClusterYAMLFile = SlurmDir + '/scripts/cluster.yaml'
 if (os.path.exists(ClusterYAMLFile)):
@@ -309,9 +309,9 @@ def create_instance(compute, project, zone, instance_type, instance_name,
     if CPU_PLATFORM:
         config['minCpuPlatform'] = CPU_PLATFORM,
 
-    SHARED_VPC_HOST_PROJ = pyjq.all('.SharedVPCHostProj', ControllerConfig)[0]
+    SHARED_VPC_HOST_PROJ = pyjq.all('.VPCNetworkProjectId', ControllerConfig)[0]
     
-    VPC_SUBNET   = pyjq.all('.VPCSubnet', ControllerConfig)[0]
+    VPC_SUBNET   = pyjq.all('.VPCNetworkName', ControllerConfig)[0]
     if VPC_SUBNET:
         net_type = "projects/{}/regions/{}/subnetworks/{}".format(
             project, REGION, VPC_SUBNET)
@@ -326,8 +326,8 @@ def create_instance(compute, project, zone, instance_type, instance_name,
             NETWORK_TYPE : net_type
         }]
 
-    EXTERNAL_IP  = pyjq.all('.InstanceParameters.ExternalIP', Partition)
-    if EXTERNAL_IP:
+    EXTERNAL_IP  = pyjq.all('.InstanceParameters.ExternalIP | select(. != null)', Partition)
+    if (len(EXTERNAL_IP) > 0):
         config['networkInterfaces'][0]['accessConfigs'] = [
             {'type': 'ONE_TO_ONE_NAT', 'name': 'External NAT'}
         ]
