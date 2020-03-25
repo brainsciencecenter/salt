@@ -1,0 +1,28 @@
+#!/bin/bash
+
+ClusterYamlFile=/apps/slurm/scripts/cluster.yaml
+SlurmConfTemplateFile=/apps/slurm/scripts/slurm.conf.template
+
+ClusterJson=$(yq -jP r - < "$ClusterYamlFile")
+SlurmConfJson=$(echo "$ClusterJson" | jq '.[].SlurmConf')
+(echo "$SlurmConfJson" | jq -r 'keys[] as $k | "export \($k)=\(.[$k])"' ; echo "envsubst < ${SlurmConfTemplateFile}") | bash
+
+AllPartitionJson=$(echo "$ClusterJson" | jq -r '.[].Partitions')
+
+Partitions="DEFAULT $(echo "$AllPartitionJson" | jq -r 'keys[]' | grep -v 'DEFAULT' | xargs)"
+
+for p in $Partitions
+do
+	PartitionJson=$(echo "$AllPartitionJson" | jq -r ".${p}")
+	NodeJson=$(echo "$PartitionJson" | jq -r '.Nodes')
+	NodeName=$(echo "$NodeJson" | jq -r '.[].NodeName | select(. != null)')
+
+	echo "$NodeJson" | jq -r '.[] as $p | $p | keys[] as $k | "\($k)=\(.[$k])"' | xargs
+
+
+	(echo PartitionName="$p"; echo "Nodes=${NodeName}"; echo "$PartitionJson" | jq -r '. | select(.PartitionParameters != null) | .PartitionParameters | keys[] as $k | "\($k)=\(.[$k])"' ) | xargs
+
+	echo ""
+done
+
+
