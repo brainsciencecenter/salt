@@ -4,19 +4,20 @@
 # Nothing else should have dashes
 # 
 
-holder6-cluster:
+holder3-cluster:
+  SlurmDir: /share/apps/slurm
   SlurmDbd:
     SlurmDbdFile: /apps/slurm/current/slurmdbd.conf
-    DbdHost: holder6-cluster-controller
+    DbdHost: holder3-cluster-controller
     DebugLevel: debug
     LogFile: /apps/slurm/log/slurmdbd.log
     PidFile: /run/slurm/slurmdbd.pid
 
   SlurmConf:
-    AccountingStorageHost: holder6-cluster-controller
+    AccountingStorageHost: holder3-cluster-controller
     AccountingStorageType: accounting_storage/slurmdbd
-    ClusterName: holder6-cluster
-    ControlMachine: holder6-cluster-controller
+    ClusterName: holder3-cluster
+    ControlMachine: holder3-cluster-controller
     ResumeFailProgram: /apps/slurm/scripts/suspend.py
     ResumeProgram: /apps/slurm/scripts/resume.py
     ResumeTimeout: 600
@@ -36,18 +37,18 @@ holder6-cluster:
     SuspendTimeout: 60
 
   Controller:
-    Project: holder6-pennbrain-upenn-edu
+    Project: holder3-pennbrain-upenn-edu
     FolderId: 634062205321
-    Group: holder6
+    Group: holder3
     BillingAccountId: 010E05-389CEA-FDE7D9
     ImageSource:
       - Image: bsc-compute-image
         Project: pennbrain-center
-    MinionId: holder6.pennbrain.upenn.edu
+    MinionId: holder3.pennbrain.upenn.edu
     Tags:
       - controller
     Labels:
-      billing-project: holder6-pennbrain-upenn-edu
+      billing-project: holder3-pennbrain-upenn-edu
     Nfs:
       - /apps
       - /home
@@ -57,12 +58,12 @@ holder6-cluster:
     DiskType: pd-standard
     Zone: us-east1-b
     Region: us-east1
-    ServiceAccount: slurm-user@holder6-pennbrain-upenn-edu.iam.gserviceaccount.com
+    ServiceAccount: slurm-user@holder3-pennbrain-upenn-edu.iam.gserviceaccount.com
     ExternalIp: 35.231.255.20
     Network: bsc-host-network
-    Subnet: holder6-subnet
+    Subnet: holder3-subnet
     VPCNetworkProjectId: pennbrain-host-3097383fff
-    VPCNetworkName: holder6-subnet
+    VPCNetworkName: holder3-subnet
     NetworkType: subnetwork
     UpdateNodeAddresses: True
     
@@ -91,7 +92,7 @@ holder6-cluster:
             BootDiskSize: 10
             DiskType: pd-standard
             MachineType: n1-standard-2
-            NetworkPath: projects/pennbrain-host-3097383fff/global/networks/holder6-cluster
+            NetworkPath: projects/pennbrain-host-3097383fff/global/networks/holder3-cluster
             Labels:
               key1: value1
               key2: value2
@@ -105,10 +106,10 @@ holder6-cluster:
         PartitionParameters:
             Default: YES
         Nodes:
-          - NodeName: holder6-cluster-compute[0-2]
+          - NodeName: holder3-cluster-compute[0-2]
 
         InstanceParameters:
-            Project: holder6-pennbrain-upenn-edu
+            Project: holder3-pennbrain-upenn-edu
             BootDiskSize: 10
             DiskType: pd-standard
             MachineType: n1-standard-2
@@ -116,17 +117,17 @@ holder6-cluster:
             Tags:
               - compute
             Labels:
-              billing-project: holder6-pennbrain-upenn-edu
+              billing-project: holder3-pennbrain-upenn-edu
 
     debug2:
         Nodes:
           - NodeName: debug2-compute[0-2]
 
         InstanceParameters:
-            Project: holder6-pennbrain-upenn-edu
+            Project: holder3-pennbrain-upenn-edu
             Tags:
               - compute
             Labels:
-              billing-project: holder6-pennbrain-upenn-edu
+              billing-project: holder3-pennbrain-upenn-edu
 
 

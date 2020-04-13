@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# Get SlurmDir setting from cluster.yaml in /share/apps or /apps or metadata
+
+function getMetadata {
+	curl -s -H "Metadata-Flavor:Google" "http://metadata.google.internal/computeMetadata/v1/instance/$1"
+}
+
+CmdName=$(basename "$0")
+
+ClusterYaml=
+Dirs="/share/apps /apps"
+ClusterYamlFileExt=slurm/scripts/cluster.yaml
+
+for d in $Dirs
+do
+	if [ -e "${d}/${ClusterYamlFileExt}" ]
+	then
+		ClusterYaml=$(< "${d}/slurm/scripts/cluster.yaml")
+		break
+	fi
+done
+
+if [ -z "$ClusterYaml" ]
+then
+	ClusterYaml=$(getMetadata "attributes/ClusterConfig")
+fi
+
+if echo "$ClusterYaml" | grep -q "Error 404"
+then
+	echo "${CmdName} : No Cluster Config Found in $Dirs or in Metadata" 1>&2
+	exit 1
+fi
+
+yq -jP r - < "${d}/slurm/scripts/cluster.yaml" | jq -r '.[].SlurmDir'
