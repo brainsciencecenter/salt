@@ -3,12 +3,15 @@ Description=MUNGE authentication service
 Documentation=man:munged(8)
 After=network.target
 After=time-sync.target
+After=fixbsccomputeimage.service
 RequiresMountsFor=/etc/munge
 
 [Service]
 Type=forking
 RuntimeDirectory=munge
 RuntimeDirectoryMode=755
+ExecStartPre=/bin/bash -c 'while ! (mount | grep -q "on /etc/munge"); do echo not mounted; sleep 5; done'
+TimeoutStartSec=300
 ExecStart=/usr/sbin/munged
 PIDFile=/run/munge/munged.pid
 User=munge

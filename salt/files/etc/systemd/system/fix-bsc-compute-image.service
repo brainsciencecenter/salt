@@ -1,6 +1,7 @@
 [Unit]
 Description=Set up BSC Image from ClusterConfig
 After=network.target
+Before=munge.service
 
 [Service]
 Type=oneshot

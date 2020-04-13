@@ -1,9 +1,11 @@
 #!/bin/bash -x
 
+systemctl status munge
+
 /usr/local/bin/fixNFSMounts
 mount -a
 systemctl daemon-reload
 systemctl restart remote-fs.target
+systemctl status munge
+
 salt-call state.apply configure/sshd
-
-

@@ -16,7 +16,11 @@
 
 import datetime
 import http.client
+import json
 import os
+from subprocess import PIPE, Popen
+
+import pyjq
 import shlex
 import socket
 import subprocess
@@ -24,6 +28,10 @@ import sys
 import time
 import urllib.request, urllib.parse, urllib.error
 import yaml
+
+no_op = False
+verbose = False
+debug = True
 
 def getMetadata(key):
     METADATA_URL = "http://metadata.google.internal/computeMetadata/v1/instance"
@@ -34,13 +42,67 @@ def getMetadata(key):
     resp = urllib.request.urlopen(req)
     return(resp.read().decode("utf-8"))
 
+def sysCmd(command,working_dir=''):
+    global no_op
+    global verbose
+
+    '''
+    sysCmd - run a command line program. -n = no-op, -v = verbose 
+
+    prints the command to stderr if either -n or -v are set.  
+    executes the command if -n is not set.
+    '''
+
+    if (no_op == 'True' or verbose == 'True'
+):
+        print(command,file=sys.stderr) 
+
+    if (no_op == 'True'):
+        return('')
+    else:
+        if(len(working_dir) > 0):
+            res = Popen([command], cwd=working_dir, shell=True, stdout=PIPE, universal_newlines=True).communicate()[0]
+        else:
+            res = Popen([command], shell=True, stdout=PIPE, universal_newlines=True).communicate()[0]
+
+        return(res)
+
+def getClusterConfig(SlurmDir):
+    ClusterYAMLFile = "{}/scripts/cluster.yaml".format(SlurmDir)
+
+    if (os.path.exists(ClusterYAMLFile)):
+        with open(ClusterYAMLFile) as file:
+            ClusterConfig = yaml.load(file, Loader=yaml.FullLoader)
+    else:
+         ClusterConfig = yaml.load(getMetadata('attributes/ClusterConfig'), Loader=yaml.FullLoader)
+
+    return(ClusterConfig)
+
+def getControllerConfig(ClusterConfig):
+    return(pyjq.all('.[].Controller', ClusterConfig)[0])
+
+SlurmDir = sysCmd("getSlurmDir").rstrip()
+ClusterConfig = getClusterConfig(SlurmDir)
+if (debug):
+    print("ClusterConfig = ", json.dumps(ClusterConfig, indent=2))
+
 CLUSTER_NAME      = 'holder-cluster'
+CLUSTER_NAME      = pyjq.all('keys[0]', ClusterConfig)[0]
+
+ControllerConfig = getControllerConfig(ClusterConfig)
+
 MACHINE_TYPE      = 'n1-standard-2' # e.g. n1-standard-1, n1-starndard-2
+MACHINE_TYPE      = pyjq.all('.MachineType',ControllerConfig)[0]
 
 PROJECT           = 'holder-dd34a9'
+PROJECT           = pyjq.all('.Project',ControllerConfig)[0]
+
 ZONE              = 'us-east1-b'
+ZONE              = pyjq.all('.Zone',ControllerConfig)[0]
 
 APPS_DIR          = '/share/apps'
+APPS_DIR          = SlurmDir
+
 CURR_SLURM_DIR    = APPS_DIR + '/slurm/current'
 MUNGE_DIR         = "/etc/munge"
 MUNGE_KEY         = ''

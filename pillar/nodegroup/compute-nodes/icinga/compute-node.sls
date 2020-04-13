@@ -2,9 +2,10 @@
 {%   set nodes = [ salt['grains.get']('id') ] %}
 {% endif %}
 
+#{% for id in nodes %}
+#  {{ id }}:
 icinga:
-{% for id in nodes %}
-  {{ id }}:
+  compute-0-0.chead.uphs.upenn.edu:
     procs:
       check_procs:
         name: [sshd]
@@ -48,4 +49,4 @@ icinga:
     check_users:
       warning: 10
       critical: 20
-{% endfor %}
+#{% endfor %}

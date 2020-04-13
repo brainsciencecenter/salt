@@ -13,5 +13,5 @@ base:
   picsl-huron.pmacs.upenn.edu:
     - icinga
 
-  compute.chead.uphs.upenn.edu:
+  compute-0-0.chead.uphs.upenn.edu:
     - compute

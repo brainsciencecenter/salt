@@ -1,7 +1,9 @@
-{% set SlurmControllerName = 'holder-cluster-controller' %}
-{% set SlurmCurrent = '/apps/slurm/current' %}
-{% set SlurmRun = '/var/run/slurm' %}
-{% set NFSMounts = [ '/apps', '/home', '/etc/munge' ] %}
+{% set ClusterName = salt['pillar.get']('ClusterConfig') %}
+{% set SlurmDir = salt['pillar.get'](ClusterName + ':SlurmDir') %}
+
+{% set SlurmCurrent = SlurmDir + '/current' %}
+{% set SlurmRun = '/run/slurm' %}
+{% set ComputeNodeScripts = [ 'fixbsccomputeimage', 'fixNFSMounts', 'getSlurmDir' ] %}
 
 /var/log/slurm:
   file.directory:
@@ -36,6 +38,16 @@
     - defaults:
         SlurmCurrent: {{ SlurmCurrent }}
         SlurmRun: {{ SlurmRun }}
+
+{% for f in ComputeNodeScripts %}
+{{ f }}:
+  file.managed:
+    - name: /usr/local/bin/{{ f }}
+    - user: root
+    - group: root
+    - mode: 755
+    - source: salt://files/usr/local/bin/{{ f }}
+{% endfor %}
 
 slurmd:
   service.running:

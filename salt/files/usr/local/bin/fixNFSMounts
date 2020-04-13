@@ -24,9 +24,14 @@ then
 
 	sed -i -r '/\snfs\s/d' "$Fstab"
 
-	echo "$ClusterConfig" | jq -r '.[].Controller.Nfs[]' | sed 's/^.*$/'"$ClusterController"':& & nfsdefaults	0	0/' >> "$Fstab"
+	echo "$ClusterConfig" | jq -r '.[].Controller.Nfs[]' | sed 's/^.*$/'"$ClusterController"':& & nfs	defaults	0	0/' >> "$Fstab"
+
+	for f in $(grep ' nfs ' "$Fstab" | awk '{print $2}')
+	do
+		[ -d "$f" ] || mkdir -p "$f"
+	done
 
 	cat "$Fstab"
 	ls --full-time "$Fstab"
-fi
 
+fi

@@ -8,11 +8,14 @@ base:
   '*.pennbrain.upenn.edu':
     - software/usergroups
     
-  'compute-*':
-    - nodegroup.compute-nodes
+  'compute*.chead.uphs.upenn.edu':
+    - hosts.compute-0-0_chead_uphs_upenn_edu
 
   'bfb.cfn.upenn.edu':
     - hosts.bfb_cfn_upenn_edu
+
+  'bsc-compute-image.pennbrain.upenn.edu':
+    - hosts.bsc-compute-image-pennbrain-upenn-edu
 
   'holder3.pennbrain.upenn.edu':
     - hosts.holder3-pennbrain-upenn-edu

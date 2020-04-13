@@ -88,7 +88,7 @@ def getPartitionsConfig(ClusterConfig):
 
 SlurmDir = getMetadata('attributes/SlurmDir')
 if (not SlurmDir):
-    SlurmDir    = '/apps/slurm'
+    SlurmDir    = '/share/apps/slurm'
 
 ClusterYAMLFile = SlurmDir + '/scripts/cluster.yaml'
 if (os.path.exists(ClusterYAMLFile)):
