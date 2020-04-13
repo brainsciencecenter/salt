@@ -1,0 +1,14 @@
+#!/usr/bin/python3
+
+import argparse
+import json
+import os
+import sys
+
+parser = argparse.ArgumentParser(description='decode salt output')
+parser.add_argument('-n', '--hostname', type=str, help='host of output to decode')
+args = parser.parse_args()
+
+data = json.load(sys.stdin)
+
+sys.stdout.buffer.write( bytes( data[args.hostname], 'UTF-8'))
