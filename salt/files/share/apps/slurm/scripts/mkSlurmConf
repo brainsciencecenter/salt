@@ -1,29 +1,72 @@
 #!/bin/bash
 
-SlurmDir=/share/apps/slurm
+CmdName=$(basename "$0")
+
+SlurmDir=$(getSlurmDir)
 ClusterYamlFile=${SlurmDir}/scripts/cluster.yaml
 SlurmConfTemplateFile=${SlurmDir}/scripts/slurm.conf.template
+SlurmConfFile="${SlurmDir}/current/etc/slurm.conf"
 
-ClusterJson=$(yq -jP r - < "$ClusterYamlFile")
-SlurmConfJson=$(echo "$ClusterJson" | jq '.[].SlurmConf')
-(echo "$SlurmConfJson" | jq -r 'keys[] as $k | "export \($k)=\(.[$k])"' ; echo "envsubst < ${SlurmConfTemplateFile}") | bash
+sys () {
+	[ -n "${opt_n}${opt_v}" ] && echo "$@" 1>&2
+	[ -n "$opt_n" ] || "$@"
+}
 
-AllPartitionJson=$(echo "$ClusterJson" | jq -r '.[].Partitions')
+genSlurmConfFile () {
 
-Partitions="DEFAULT $(echo "$AllPartitionJson" | jq -r 'keys[]' | grep -v 'DEFAULT' | xargs)"
+	ClusterJson=$(yq -jP r - < "$ClusterYamlFile")
+	SlurmConfJson=$(echo "$ClusterJson" | jq '.[].SlurmConf')
+	(echo "$SlurmConfJson" | jq -r 'keys[] as $k | "export \($k)=\(.[$k])"' ; echo "envsubst < ${SlurmConfTemplateFile}") | bash
+	
+	AllPartitionJson=$(echo "$ClusterJson" | jq -r '.[].Partitions')
+	
+	Partitions="DEFAULT $(echo "$AllPartitionJson" | jq -r 'keys[]' | grep -v 'DEFAULT' | xargs)"
+	
+	for p in $Partitions
+	do
+		PartitionJson=$(echo "$AllPartitionJson" | jq -r ".${p}")
+		NodeJson=$(echo "$PartitionJson" | jq -r '.Nodes')
+		NodeName=$(echo "$NodeJson" | jq -r '.[].NodeName | select(. != null)')
+	
+		echo "$NodeJson" | jq -r '.[] as $p | $p | keys[] as $k | "\($k)=\(.[$k])"' | xargs
+	
+	
+		(echo PartitionName="$p"; echo "Nodes=${NodeName}"; echo "$PartitionJson" | jq -r '. | select(.PartitionParameters != null) | .PartitionParameters | keys[] as $k | "\($k)=\(.[$k])"' ) | xargs
+	
+		echo ""
+	done
+}	
 
-for p in $Partitions
+while getopts nuv arg
 do
-	PartitionJson=$(echo "$AllPartitionJson" | jq -r ".${p}")
-	NodeJson=$(echo "$PartitionJson" | jq -r '.Nodes')
-	NodeName=$(echo "$NodeJson" | jq -r '.[].NodeName | select(. != null)')
-
-	echo "$NodeJson" | jq -r '.[] as $p | $p | keys[] as $k | "\($k)=\(.[$k])"' | xargs
-
-
-	(echo PartitionName="$p"; echo "Nodes=${NodeName}"; echo "$PartitionJson" | jq -r '. | select(.PartitionParameters != null) | .PartitionParameters | keys[] as $k | "\($k)=\(.[$k])"' ) | xargs
-
-	echo ""
+	case "$arg" in
+		n|u|v)
+			eval "opt_${arg}=${OPTARG:=1}"
+			;;
+	esac
 done
+
+shift $((OPTIND - 1))
+
+if [ -n "${opt_n}${opt_v}" ]
+then
+	TmpFile=$(mktemp "/tmp/${CmdName}-XXXXXX")
+	chmod 644 "$TmpFile"
+
+	genSlurmConfFile > "$TmpFile"
+
+	Diff=$(diff -w "$TmpFile" "$SlurmConfFile")
+	if [ -n "$Diff" ]
+	then
+		if [ -n "$opt_v" ]
+		then
+			echo "$Diff"
+		fi
+		sys mv "$TmpFile" "$SlurmConfFile"
+		sys service slurmctld restart
+	fi
+else
+	genSlurmConfFile
+fi
 
 

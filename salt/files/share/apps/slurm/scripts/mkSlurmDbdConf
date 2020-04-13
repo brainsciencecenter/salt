@@ -1,9 +1,52 @@
 #!/bin/bash
 
-SlurmDir=/share/apps/slurm
+CmdName=$(basename "$0")
+
+genSlurmDbdConf () {
+	SlurmDbdJson=$(yq -jP r - < "$ClusterYamlFile" | jq '.[].SlurmDbd')
+	(echo "$SlurmDbdJson" | jq -r 'keys[] as $k | "export \($k)=\(.[$k])"' ; echo "envsubst < ${SlurmDbdTemplateFile}") | bash
+}
+
+sys () {
+	[ -n "${opt_n}${opt_v}" ] && echo "$@" 1>&2
+	[ -n "$opt_n" ] || "$@"
+}
+
+SlurmDir=$(getSlurmDir)
 ClusterYamlFile=${SlurmDir}/scripts/cluster.yaml
 SlurmDbdTemplateFile=${SlurmDir}/scripts/slurmdbd.conf.template
+SlurmDbdConfFile="${SlurmDir}/current/etc/slurmdbd.conf"
 
-SlurmDbdJson=$(yq -jP r - < "$ClusterYamlFile" | jq '.[].SlurmDbd')
-(echo "$SlurmDbdJson" | jq -r 'keys[] as $k | "export \($k)=\(.[$k])"' ; echo "envsubst < ${SlurmDbdTemplateFile}") | bash
+while getopts nuv arg 
+do
+	case "$arg" in
+		n|u|v)
+			eval "opt_${arg}=${OPTARG:=1}"
+			;;
+	esac
+done
+
+shift $((OPTIND - 1))
+
+if [ -n "${opt_n}${opt_u}" ]
+then
+	TmpFile=$(mktemp /tmp/${CmdName}-XXXXXX)
+	chmod 644 "$TmpFile"
+
+	genSlurmDbdConf > "$TmpFile"
+	Diff=$(diff -w "$TmpFile" "${SlurmDbdConfFile}")
+
+	if [ -n "$Diff" ]
+	then
+		if [ -n "$opt_v" ]
+		then
+			echo "$Diff"
+		fi
+		sys mv "$TmpFile" "$SlurmDbdConfFile" 
+		sys service slurmdbd restart
+	fi
+else
+	genSlurmDbdConf
+fi
+	
 

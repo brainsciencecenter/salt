@@ -1,3 +1,9 @@
+#
+# This file is generated from
+#   /share/apps/slurm/scripts/cluster.conf
+# and 
+#   /share/apps/slurm/scripts/mkSlurmDbdConf -u
+#
 
 #ArchiveEvents=yes
 #ArchiveJobs=yes
