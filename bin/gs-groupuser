@@ -214,7 +214,7 @@ def groupAdd():
     parser.add_argument('groups', nargs='+', help='groups to get, if none specified, get all groups')
 
     setop = parser.add_mutually_exclusive_group()
-    setop.add_argument('-U', '--collective', action='store_true', help='collective group')
+    setop.add_argument('-C', '--collective', action='store_true', help='collective group')
     setop.add_argument('-r', '--service', action='store_true', help='service group for programs/applications')
     setop.add_argument('-U', '--User', action='store_true', help='user default group')
     args = parser.parse_args()
@@ -507,6 +507,12 @@ def gsUserGet(service, userKey=None):
 
     return(Users)
 
+def fudgeGecos(u):
+    if ('posixAccounts' in u.keys()):
+        if ('gecos' in u['posixAccounts']):
+            return(u['posixAccounts'][0]['gecos'])
+        else:
+            return("")
 #
 # *** need to add filter of user type service collective, user
 # gs-userget [-c|e|j][-C|r|U][[user1]...]
@@ -552,7 +558,7 @@ def userGet():
                                                    'x',
                                                    u['posixAccounts'][0]['uid'],
                                                    u['posixAccounts'][0]['gid'],
-                                                   u['name']['fullName'],
+                                                   fudgeGecos(u),
                                                    u['posixAccounts'][0]['homeDirectory'],
                                                    u['posixAccounts'][0]['shell']))
 
@@ -593,6 +599,7 @@ def gsUserMod(service, userKey=None, GivenName=None, FamilyName=None, gecos=None
             "primary": True,
             "operatingSystemType": "unspecified"
         }
+        posixAccount = {}
 
 
     """
@@ -635,7 +642,7 @@ def gsUserMod(service, userKey=None, GivenName=None, FamilyName=None, gecos=None
         Update = True
     
     if (sshkeys):
-        Body['sshPublicKeys'] = sshkeys
+        Body['sshPublicKeys'] = list(map(lambda x: { 'key': x }, sshkeys))
         Update = True
     
     if (secondaryEMails):
@@ -658,7 +665,7 @@ def gsUserMod(service, userKey=None, GivenName=None, FamilyName=None, gecos=None
         results = service.users().update(userKey=userKey, body=Body).execute()
         print("gsUserMod UpdateBody results", json.dumps(results, indent=2))
     except errors.HttpError as error:
-        print('An error updating the body for {} occurred: {}'.format(userKey,error.content), file=sys.stderr)            
+        print('An error updating the body for {} occurred: {}'.format(userKey,error.content), json.dumps(Body, indent=2), file=sys.stderr)            
         return(False)
 
     return(results)
@@ -759,7 +766,7 @@ def userAdd():
     Password = None
     RequirePasswordReset = False
     t = "-U"
-    Shell = '/bin/bash'       # *** should probably readd form cluster-config.yaml
+    Shell = '/bin/bash'       # *** should probably readd from cluster-config.yaml
     SshKeys = []
     NewUid = None
 
@@ -934,10 +941,16 @@ def userMod():
         RequirePasswordReset = args.reset_password
             
         if (args.ssh_keys):
-            try:
-                with open(args.ssh_keys) as x: [ SshKeys ] = x.read().rstrip()
-            except (OSError, IOError, FileNotFoundError) as e:
-                SshKeys = args.ssh_key.split(',')
+            for k in args.ssh_keys.split(','):
+                print("sshkey = {}".format(k))
+
+                try:
+                    with open(args.ssh_keys) as f: sshkeys = f.read().splitlines()
+                except (OSError, IOError, FileNotFoundError) as e:
+                    sshkeys = [ args.ssh_keys ]
+
+                SshKeys += sshkeys
+
 
         if (args.shell):
             Shell = args.shell
@@ -948,16 +961,13 @@ def userMod():
         if (args.gid):
             NewGid = int(args.gid)
 
-        if (SshKeys):
-            Body['sshPublicKeys'] = list(map(lambda x: {'key': x, 'expirationTimeUsec': 0}, SshKeys))
-
         if (args.emails):
             EMails = sorted(list(set(args.emails.split(','))))
 
         if (verbose):
             print("userMod -d {} -G {} {} -M {} -p {} -R {} -S {} -s {} -u {} {} {}".format(HomeDir,','.join(Groups),t,','.join(EMails), Password, RequirePasswordReset,Shell,SshKeys,NewUid,UserName, u))
         try:
-            results2 = gsUserMod(service, userKey=u, homedir=HomeDir, uid=NewUid, gid=NewGid, shell=Shell, username=UserName, verbose=verbose, noop=verbose)
+            results2 = gsUserMod(service, userKey=u, homedir=HomeDir, uid=NewUid, gid=NewGid, shell=Shell, sshkeys=SshKeys, username=UserName, verbose=verbose, noop=verbose)
             print("results2", json.dumps(results2, indent=2))
         except errors.HttpError as error:
             print('An error updating user {} occurred: {}'.format(primaryEmail,error), file=sys.stderr)

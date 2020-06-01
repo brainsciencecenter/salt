@@ -70,7 +70,6 @@ Region=us-east1
 Zone=us-east1-b
 SubnetFormat="10.%d.0.0/16\n"
 RouterName="${Group}-router"
-RouterNatName="${RouterName}-nat"
 
 read -r Domain OrganizationId CustomerId <<< $(getOrgInfo)
 read -r TopFolder ParentFolderId <<< $(getTopFolderInfo "$OrganizationId")
@@ -81,6 +80,7 @@ read -r VPCNetworkProjectId <<< $(getVPCNetworkProjectId "$VPCNetworkProjectName
 SubnetJson=$(getSubnetInfo "$VPCNetworkProjectId" "$Region")
 SubnetRange=$(getNextSubnetRange "$SubnetFormat" "$SubnetJson")
 SubnetName="${Group}-subnet"
+SubnetNatName="${SubnetName}-nat"
 
 echo $Domain
 echo $OrganizationId
@@ -286,21 +286,20 @@ rmReservedIPAddress() {
 # Create router and router nat
 function mkrouter {
     local RouterName="$1"
-    local RouterNatName="$2"
+    local SubnetNatName="$2"
     local VPCNetworkProjectId="$3"
     local VPCNetworkName="$4"
     local SubnetName="$5"
-    local RouterNatName="$6"
 
-    RouterJson=$(gcloud beta compute routers  list --project pennbrain-host-3097383fff --format json | jq -r '.[]')
+    RouterJson=$(gcloud beta compute routers  list --project "$VPCNetworkProjectId" --format json | jq -r '.[]')
     if ! (echo "$RouterJson" | jq -r 'select(.name|match("'"$RouterName"'"))|.name' | grep -q "$RouterName")
     then
 	gcloud compute routers create "$RouterName" --project "$VPCNetworkProjectId" --network "$VPCNetworkName"
     fi
 
-    if ! (echo "$RouterJson" | jq -r 'select(.name|match("'"$RouterName"'"))|.nats[].name' | grep -q "$RouterNatName")
+    if ! (echo "$RouterJson" | jq -r 'select(.name|match("'"$RouterName"'"))|.nats[].name' | grep -q "$SubnetNatName")
     then
-	gcloud beta compute routers nats create "$RouterNatName" --router "$RouterName" --project "$VPCNetworkProjectId" --auto-allocate-nat-external-ips --nat-custom-subnet-ip-ranges="$SubnetName"
+	gcloud beta compute routers nats create "$SubnetNatName" --router "$RouterName" --project "$VPCNetworkProjectId" --auto-allocate-nat-external-ips --nat-custom-subnet-ip-ranges="$SubnetName"
     fi
     
 }
@@ -355,6 +354,7 @@ mkExternalIp () {
 # + update resume.py and cloud-init
 # salt does not install python module for jq
 # cloud-config.yaml needs to be created
+# need to add BSC User role to the folder for the group
 
 if [ "$CmdName" == mkcluster ]
 then
@@ -380,7 +380,7 @@ then
 
     ReservedIPAddress=$(mkReservedIPAddress "$ProjectName" "$ProjectName" "$Region")
 
-    mkrouter "$RouterName" "$RouterNatName" "$VPCNetworkProjectId" "$VPCNetworkName" "$SubnetName" "$RouterNatName"
+    mkrouter "$RouterName" "$SubnetNatName" "$VPCNetworkProjectId" "$VPCNetworkName" "$SubnetName"
 
     ClusterName=${Group}-cluster
     ControllerMachine=${ClusterName}-controller
